@@ -250,7 +250,7 @@ class MainPanel(View):
 # -------------------- PANEL COMMAND --------------------
 @tree.command(name="panel", description="Send ticket panel")
 async def panel(interaction: discord.Interaction):
-    msg = "Click the button below to create a ticket."
+    msg = "# Click the button below to create a ticket."
     await interaction.response.send_message(msg, view=MainPanel())
 
 # -------------------- RUN --------------------
