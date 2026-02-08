@@ -250,8 +250,15 @@ class MainPanel(View):
 # -------------------- PANEL COMMAND --------------------
 @tree.command(name="panel", description="Send ticket panel")
 async def panel(interaction: discord.Interaction):
-    msg = "# Click the button below to create a ticket."
+    msg = """
+# ⛨ Tier-Test Panel ⛨
+
+### Click the button below to test your tier.
+"""
+    msg = "https://giphy.com/gifs/pfc6QJ3z8l3kmrC6TA"
+    
     await interaction.response.send_message(msg, view=MainPanel())
+
 
 # -------------------- RUN --------------------
 if __name__ == "__main__":
