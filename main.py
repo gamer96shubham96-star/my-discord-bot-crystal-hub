@@ -250,13 +250,15 @@ class MainPanel(View):
 # -------------------- PANEL COMMAND --------------------
 @tree.command(name="panel", description="Send ticket panel")
 async def panel(interaction: discord.Interaction):
-    msg = """
-# ⛨ Tier-Test Panel ⛨
+    """
+    msg = "https://giphy.com/gifs/tiertest-IkSLbEzqgT9LzS1NKH"
+
+    # ⛨ Tier-Test Panel ⛨
 
 ### Click the button below to test your tier.
 
-    msg = "https://giphy.com/gifs/tiertest-IkSLbEzqgT9LzS1NKH"
-    """
+     """
+   
     await interaction.response.send_message(msg, view=MainPanel())
 
 
