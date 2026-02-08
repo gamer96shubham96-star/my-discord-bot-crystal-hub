@@ -254,9 +254,9 @@ async def panel(interaction: discord.Interaction):
 # ⛨ Tier-Test Panel ⛨
 
 ### Click the button below to test your tier.
-"""
-    msg = "https://giphy.com/gifs/pfc6QJ3z8l3kmrC6TA"
-    
+
+    msg = "https://giphy.com/gifs/tiertest-IkSLbEzqgT9LzS1NKH"
+    """
     await interaction.response.send_message(msg, view=MainPanel())
 
 
