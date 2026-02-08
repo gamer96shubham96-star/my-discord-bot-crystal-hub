@@ -1,19 +1,23 @@
+# bot.py
 import os
 import asyncio
 import discord
 from discord import app_commands
 from discord.ui import View, Button, Select
+from dotenv import load_dotenv
 
-TOKEN = "MTQ2OTAwNDMzOTI3MDkxMDIyNg.GMwsyk.DoH2zqQgeF2uLqK55uf6wtWxOPIfUW_-bNCYXo"  # USE ENV TOKEN
-GUILD_ID = 1466825673384394824
+# Load environment variables from a .env file (if present)
+load_dotenv()
+
+# -------------------- CONFIG --------------------
+TOKEN = os.getenv("TOKEN")  # Your Discord bot token from env
+GUILD_ID = int(os.getenv("GUILD_ID", 1466825673384394824))
 
 intents = discord.Intents.default()
-
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
 ticket_config: dict[str, int] = {}
-
 
 # -------------------- READY --------------------
 @client.event
@@ -25,7 +29,6 @@ async def on_ready():
     client.add_view(TicketButtons())
 
     print(f"✅ Logged in as {client.user}")
-
 
 # -------------------- TIER RESULT COMMAND --------------------
 @tree.command(name="tier", description="Post official tier result")
@@ -111,8 +114,7 @@ async def tier(
 """
     await interaction.response.send_message(msg)
 
-
-# -------------------- SETUP --------------------
+# -------------------- TICKET SETUP COMMAND --------------------
 @tree.command(name="setup_tickets", description="Setup ticket system")
 @app_commands.checks.has_permissions(administrator=True)
 async def setup_tickets(
@@ -123,7 +125,6 @@ async def setup_tickets(
     ticket_config["category"] = category.id
     ticket_config["staff_role"] = staff_role.id
     await interaction.response.send_message("✅ Ticket system configured", ephemeral=True)
-
 
 # -------------------- REGION & MODE SELECTS --------------------
 class RegionSelect(Select):
@@ -142,7 +143,6 @@ class RegionSelect(Select):
         self.view_ref.region = self.values[0]
         await self.view_ref.refresh(interaction)
 
-
 class ModeSelect(Select):
     def __init__(self, view):
         options = [
@@ -156,7 +156,6 @@ class ModeSelect(Select):
     async def callback(self, interaction: discord.Interaction):
         self.view_ref.mode = self.values[0]
         await self.view_ref.refresh(interaction)
-
 
 # -------------------- TIER TEST VIEW --------------------
 class TierTicketView(View):
@@ -194,8 +193,6 @@ Welcome {self.member.mention}
     async def close(self, interaction: discord.Interaction, button: Button):
         await interaction.channel.delete()
 
-
-
 # -------------------- NORMAL TICKET BUTTONS --------------------
 class TicketButtons(View):
     def __init__(self):
@@ -209,7 +206,6 @@ class TicketButtons(View):
     async def close(self, interaction: discord.Interaction, button: Button):
         await asyncio.sleep(2)
         await interaction.channel.delete()
-
 
 # -------------------- PANEL BUTTONS --------------------
 class MainPanel(View):
@@ -254,16 +250,11 @@ class MainPanel(View):
 # -------------------- PANEL COMMAND --------------------
 @tree.command(name="panel", description="Send ticket panel")
 async def panel(interaction: discord.Interaction):
-    msg = """
-# ⛨ Tier-Test Panel ⛨
-
-### Click the button below to test your tier.
-"""
-    msg = "https://giphy.com/gifs/pfc6QJ3z8l3kmrC6TA"
-    
+    msg = "Click the button below to create a ticket."
     await interaction.response.send_message(msg, view=MainPanel())
 
-
 # -------------------- RUN --------------------
-import os
-client.run(os.getenv("TOKEN"))
+if __name__ == "__main__":
+    if not TOKEN:
+        raise ValueError("Bot token not found! Set TOKEN in environment variables.")
+    client.run(TOKEN)
