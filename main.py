@@ -241,18 +241,15 @@ class MainPanel(View):
 # -------------------- PANEL COMMAND --------------------
 @tree.command(name="panel", description="Send ticket panel")
 async def panel(interaction: discord.Interaction):
-    
-    msg = """
+    embed = discord.Embed(
+        title="⛨ Tier-Test Panel ⛨",
+        description="### Click the button below to test your tier.",
+        color=discord.Color.blue()
+    )
+    # GIF on top
+    embed.set_image(url="https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif")
 
-    # ⛨ Tier-Test Panel ⛨
-
-### Click the button below to test your tier.
-
-     """
-    msg-"https://giphy.com/gifs/tiertest-IkSLbEzqgT9LzS1NKH"
-   
-    await interaction.response.send_message(msg, view=MainPanel())
-
+    await interaction.response.send_message(embed=embed, view=MainPanel())
 
 # -------------------- RUN --------------------
 if __name__ == "__main__":
