@@ -14,8 +14,8 @@ TOKEN = os.getenv("TOKEN")  # Your Discord bot token from env
 GUILD_ID = int(os.getenv("GUILD_ID", 1466825673384394824))
 
 intents = discord.Intents.default()
+intents.guilds = True  # <--- Important
 client = discord.Client(intents=intents)
-tree = app_commands.CommandTree(client)
 
 ticket_config: dict[str, int] = {}
 
@@ -24,17 +24,18 @@ ticket_config: dict[str, int] = {}
 async def on_ready():
     guild = client.get_guild(GUILD_ID)
     if guild is None:
-        guild = discord.Object(id=GUILD_ID)
+        guild = discord.Object(id=GUILD_ID)  # fallback for syncing commands
 
     # Clear old guild commands
-    await tree.clear_commands(guild=guild)
-    # Clear old global commands (optional, uncomment if needed)
-    # await tree.clear_commands(guild=None)
+    try:
+        await tree.clear_commands(guild=guild)
+    except Exception as e:
+        print(f"⚠️ Failed to clear commands: {e}")
 
-    # Sync new commands to the guild
+    # Sync new commands
     await tree.sync(guild=guild)
 
-    # Add persistent views with custom_ids
+    # Add persistent views
     client.add_view(MainPanel())
     client.add_view(TicketButtons())
 
