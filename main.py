@@ -28,14 +28,13 @@ async def on_ready():
 
     # Clear old guild commands
     await tree.clear_commands(guild=guild)
-
-    # Optional: clear global commands if needed
+    # Clear old global commands (optional, uncomment if needed)
     # await tree.clear_commands(guild=None)
 
-    # Sync new commands
+    # Sync new commands to the guild
     await tree.sync(guild=guild)
 
-    # Add persistent views
+    # Add persistent views with custom_ids
     client.add_view(MainPanel())
     client.add_view(TicketButtons())
 
@@ -63,9 +62,9 @@ async def on_ready():
     ],
     mode=[
         app_commands.Choice(name="Crystal PvP", value="Crystal PvP"),
-        app_commands.Choice(name="NethPot PvP", value="NethPot"),
+        app_commands.Choice(name="NethPot PvP", value="NethPot PvP"),
         app_commands.Choice(name="SMP PvP", value="SMP PvP"),
-        app_commands.Choice(name="Sword", value="Sword"),  # Added Sword
+        app_commands.Choice(name="Sword", value="Sword"),
     ],
     account=[
         app_commands.Choice(name="Premium", value="Premium"),
@@ -73,7 +72,7 @@ async def on_ready():
     ],
     result=[
         app_commands.Choice(name="WON", value="WON"),
-        app_commands.Choice(name="LOST", value="LOST"),  # Changed LOSE → LOST
+        app_commands.Choice(name="LOST", value="LOST"),
     ],
 )
 async def tier(
@@ -150,7 +149,7 @@ class ModeSelect(Select):
             discord.SelectOption(label="Crystal PvP"),
             discord.SelectOption(label="NethPot PvP"),
             discord.SelectOption(label="SMP PvP"),
-            discord.SelectOption(label="Sword"),  # Added Sword
+            discord.SelectOption(label="Sword"),
         ]
         super().__init__(placeholder="Select your Gamemode", options=options, custom_id="mode_select")
         self.view_ref = view
@@ -252,7 +251,7 @@ class MainPanel(View):
 # -------------------- PANEL COMMAND --------------------
 @tree.command(name="panel", description="Send ticket panel")
 async def panel(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=False)  # defers the interaction
+    await interaction.response.defer(ephemeral=False)
     embed = discord.Embed(
         title="⛨ Tier-Test Panel ⛨",
         description="### Click the button below to test your tier.",
@@ -260,6 +259,7 @@ async def panel(interaction: discord.Interaction):
     )
     embed.set_image(url="https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif")
     await interaction.followup.send(embed=embed, view=MainPanel())
+
 # -------------------- RUN --------------------
 if __name__ == "__main__":
     if not TOKEN:
