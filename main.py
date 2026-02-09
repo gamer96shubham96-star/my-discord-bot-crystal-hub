@@ -55,6 +55,7 @@ async def on_ready():
         app_commands.Choice(name="Crystal PvP", value="Crystal PvP"),
         app_commands.Choice(name="NethPot PvP", value="NethPot PvP"),
         app_commands.Choice(name="SMP PvP", value="SMP PvP"),
+        app_commands.Choice(name="Sword", value="Sword"),
     ],
     account=[
         app_commands.Choice(name="Premium", value="Premium"),
@@ -140,6 +141,7 @@ class ModeSelect(Select):
             discord.SelectOption(label="Crystal PvP"),
             discord.SelectOption(label="NethPot PvP"),
             discord.SelectOption(label="SMP PvP"),
+            discord.SelectOption(label="Sword"),
         ]
         super().__init__(placeholder="Select your Gamemode", options=options)
         self.view_ref = view
