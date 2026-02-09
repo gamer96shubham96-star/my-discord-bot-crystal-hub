@@ -6,7 +6,7 @@ from discord import app_commands
 from discord.ui import View, Button, Select
 from dotenv import load_dotenv
 
-# Load environment variables from a .env file
+# Load environment variables
 load_dotenv()
 
 # -------------------- CONFIG --------------------
@@ -15,9 +15,8 @@ GUILD_ID = int(os.getenv("GUILD_ID", 1466825673384394824))
 
 # -------------------- INTENTS --------------------
 intents = discord.Intents.default()
-intents.guilds = True
-intents.members = True  # for discord.Member
-
+intents.members = True  # Needed for Member objects
+intents.message_content = True  # Needed for interaction responses
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
@@ -28,22 +27,16 @@ ticket_config: dict[str, int] = {}
 async def on_ready():
     guild = client.get_guild(GUILD_ID)
     if guild is None:
-        guild = discord.Object(id=GUILD_ID)  # fallback
+        guild = discord.Object(id=GUILD_ID)
 
-    # Clear old guild commands
-    try:
-        await tree.clear_commands(guild=guild)
-    except Exception as e:
-        print(f"⚠️ Failed to clear commands: {e}")
-
-    # Sync commands
+    # Clear and sync commands for the guild
     await tree.sync(guild=guild)
 
     # Add persistent views
     client.add_view(MainPanel())
     client.add_view(TicketButtons())
 
-    print(f"✅ Logged in as {client.user} - Commands reset and synced!")
+    print(f"✅ Logged in as {client.user} - Commands synced!")
 
 # -------------------- TIER RESULT COMMAND --------------------
 @tree.command(name="tier", description="Post official tier result")
@@ -67,7 +60,7 @@ async def on_ready():
     ],
     mode=[
         app_commands.Choice(name="Crystal PvP", value="Crystal PvP"),
-        app_commands.Choice(name="NethPot PvP", value="NethPot PvP"),
+        app_commands.Choice(name="NethPot PvP", value="NethPot"),
         app_commands.Choice(name="SMP PvP", value="SMP PvP"),
         app_commands.Choice(name="Sword", value="Sword"),
     ],
@@ -170,7 +163,6 @@ class TierTicketView(View):
         self.member = member
         self.region = "Not Selected"
         self.mode = "Not Selected"
-
         self.add_item(RegionSelect(self))
         self.add_item(ModeSelect(self))
 
@@ -206,7 +198,7 @@ class TicketButtons(View):
 
     @discord.ui.button(label="Claim", style=discord.ButtonStyle.blurple, custom_id="ticket_claim")
     async def claim(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_message(f"Claimed by {interaction.user.mention}")
+        await interaction.response.send_message(f"Claimed by {interaction.user.mention}", ephemeral=True)
 
     @discord.ui.button(label="Close", style=discord.ButtonStyle.red, custom_id="ticket_close")
     async def close(self, interaction: discord.Interaction, button: Button):
