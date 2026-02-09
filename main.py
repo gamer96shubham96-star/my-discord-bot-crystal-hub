@@ -23,14 +23,17 @@ ticket_config: dict[str, int] = {}
 @client.event
 async def on_ready():
     guild = client.get_guild(GUILD_ID)
-    
-    # Delete all existing slash commands in the guild
-    for cmd in await tree.fetch_commands(guild=guild):
+    if guild is None:
+        guild = discord.Object(id=GUILD_ID)
+
+    # Delete all existing slash commands in this guild
+    existing_commands = await tree.fetch_commands(guild=guild)
+    for cmd in existing_commands:
         await tree.delete_command(cmd.id, guild=guild)
-    
-    # Re-sync the updated commands
+
+    # Sync new commands
     await tree.sync(guild=guild)
-    
+
     client.add_view(MainPanel())
     client.add_view(TicketButtons())
 
