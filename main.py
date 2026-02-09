@@ -60,11 +60,10 @@ async def on_ready():
         app_commands.Choice(name="Europe", value="Europe"),
         app_commands.Choice(name="North America", value="North America"),
         app_commands.Choice(name="South America", value="South America"),
-        app_commands.Choice(name="Oceania", value="Oceania"),
     ],
     mode=[
         app_commands.Choice(name="Crystal PvP", value="Crystal PvP"),
-        app_commands.Choice(name="NethPot PvP", value="NethPot PvP"),
+        app_commands.Choice(name="NethPot PvP", value="NethPot"),
         app_commands.Choice(name="SMP PvP", value="SMP PvP"),
         app_commands.Choice(name="Sword", value="Sword"),  # Added Sword
     ],
@@ -137,7 +136,6 @@ class RegionSelect(Select):
             discord.SelectOption(label="Europe"),
             discord.SelectOption(label="North America"),
             discord.SelectOption(label="South America"),
-            discord.SelectOption(label="Oceania"),
         ]
         super().__init__(placeholder="Select your Region", options=options, custom_id="region_select")
         self.view_ref = view
