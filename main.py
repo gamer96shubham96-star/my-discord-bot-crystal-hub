@@ -22,13 +22,19 @@ ticket_config: dict[str, int] = {}
 # -------------------- READY --------------------
 @client.event
 async def on_ready():
-    guild = discord.Object(id=GUILD_ID)
+    guild = client.get_guild(GUILD_ID)
+    
+    # Delete all existing slash commands in the guild
+    for cmd in await tree.fetch_commands(guild=guild):
+        await tree.delete_command(cmd.id, guild=guild)
+    
+    # Re-sync the updated commands
     await tree.sync(guild=guild)
-
+    
     client.add_view(MainPanel())
     client.add_view(TicketButtons())
 
-    print(f"✅ Logged in as {client.user}")
+    print(f"✅ Logged in as {client.user} - Commands reset and synced!")
 
 # -------------------- TIER RESULT COMMAND --------------------
 @tree.command(name="tier", description="Post official tier result")
