@@ -26,17 +26,13 @@ async def on_ready():
     if guild is None:
         guild = discord.Object(id=GUILD_ID)
 
-    # DELETE old guild commands
-    existing_guild_cmds = await tree.fetch_commands(guild=guild)
-    for cmd in existing_guild_cmds:
-        await tree.delete_command(cmd.id, guild=guild)
+    # Clear old guild commands
+    await tree.clear_commands(guild=guild)
 
-    # DELETE old global commands (VERY IMPORTANT)
-    existing_global_cmds = await tree.fetch_commands()
-    for cmd in existing_global_cmds:
-        await tree.delete_command(cmd.id)
+    # Optional: clear global commands if needed
+    # await tree.clear_commands(guild=None)
 
-    # SYNC new commands
+    # Sync new commands
     await tree.sync(guild=guild)
 
     # Add persistent views
@@ -44,7 +40,6 @@ async def on_ready():
     client.add_view(TicketButtons())
 
     print(f"✅ Logged in as {client.user} - Commands reset and synced!")
-
 
 # -------------------- TIER RESULT COMMAND --------------------
 @tree.command(name="tier", description="Post official tier result")
@@ -259,15 +254,14 @@ class MainPanel(View):
 # -------------------- PANEL COMMAND --------------------
 @tree.command(name="panel", description="Send ticket panel")
 async def panel(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=False)  # defers the interaction
     embed = discord.Embed(
         title="⛨ Tier-Test Panel ⛨",
         description="### Click the button below to test your tier.",
         color=discord.Color.blue()
     )
     embed.set_image(url="https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif")
-
-    await interaction.response.send_message(embed=embed, view=MainPanel())
-
+    await interaction.followup.send(embed=embed, view=MainPanel())
 # -------------------- RUN --------------------
 if __name__ == "__main__":
     if not TOKEN:
