@@ -6,16 +6,20 @@ from discord import app_commands
 from discord.ui import View, Button, Select
 from dotenv import load_dotenv
 
-# Load environment variables from a .env file (if present)
+# Load environment variables from a .env file
 load_dotenv()
 
 # -------------------- CONFIG --------------------
-TOKEN = os.getenv("TOKEN")  # Your Discord bot token from env
+TOKEN = os.getenv("TOKEN")
 GUILD_ID = int(os.getenv("GUILD_ID", 1466825673384394824))
 
+# -------------------- INTENTS --------------------
 intents = discord.Intents.default()
-intents.guilds = True  # <--- Important
+intents.guilds = True
+intents.members = True  # for discord.Member
+
 client = discord.Client(intents=intents)
+tree = app_commands.CommandTree(client)
 
 ticket_config: dict[str, int] = {}
 
@@ -24,7 +28,7 @@ ticket_config: dict[str, int] = {}
 async def on_ready():
     guild = client.get_guild(GUILD_ID)
     if guild is None:
-        guild = discord.Object(id=GUILD_ID)  # fallback for syncing commands
+        guild = discord.Object(id=GUILD_ID)  # fallback
 
     # Clear old guild commands
     try:
@@ -32,7 +36,7 @@ async def on_ready():
     except Exception as e:
         print(f"⚠️ Failed to clear commands: {e}")
 
-    # Sync new commands
+    # Sync commands
     await tree.sync(guild=guild)
 
     # Add persistent views
