@@ -26,19 +26,25 @@ async def on_ready():
     if guild is None:
         guild = discord.Object(id=GUILD_ID)
 
-    # DELETE old commands in the guild to avoid TransformerError
-    existing_commands = await tree.fetch_commands(guild=guild)
-    for cmd in existing_commands:
+    # DELETE old guild commands
+    existing_guild_cmds = await tree.fetch_commands(guild=guild)
+    for cmd in existing_guild_cmds:
         await tree.delete_command(cmd.id, guild=guild)
+
+    # DELETE old global commands (VERY IMPORTANT)
+    existing_global_cmds = await tree.fetch_commands()
+    for cmd in existing_global_cmds:
+        await tree.delete_command(cmd.id)
 
     # SYNC new commands
     await tree.sync(guild=guild)
 
-    # Add persistent views (with custom_id set for buttons)
+    # Add persistent views
     client.add_view(MainPanel())
     client.add_view(TicketButtons())
 
     print(f"✅ Logged in as {client.user} - Commands reset and synced!")
+
 
 # -------------------- TIER RESULT COMMAND --------------------
 @tree.command(name="tier", description="Post official tier result")
