@@ -26,14 +26,15 @@ async def on_ready():
     if guild is None:
         guild = discord.Object(id=GUILD_ID)
 
-    # Delete all existing slash commands in this guild
+    # DELETE old commands in the guild to avoid TransformerError
     existing_commands = await tree.fetch_commands(guild=guild)
     for cmd in existing_commands:
         await tree.delete_command(cmd.id, guild=guild)
 
-    # Sync new commands
+    # SYNC new commands
     await tree.sync(guild=guild)
 
+    # Add persistent views (with custom_id set for buttons)
     client.add_view(MainPanel())
     client.add_view(TicketButtons())
 
@@ -137,7 +138,7 @@ class RegionSelect(Select):
             discord.SelectOption(label="South America"),
             discord.SelectOption(label="Oceania"),
         ]
-        super().__init__(placeholder="Select your Region", options=options)
+        super().__init__(placeholder="Select your Region", options=options, custom_id="region_select")
         self.view_ref = view
 
     async def callback(self, interaction: discord.Interaction):
@@ -152,7 +153,7 @@ class ModeSelect(Select):
             discord.SelectOption(label="SMP PvP"),
             discord.SelectOption(label="Sword"),  # Added Sword
         ]
-        super().__init__(placeholder="Select your Gamemode", options=options)
+        super().__init__(placeholder="Select your Gamemode", options=options, custom_id="mode_select")
         self.view_ref = view
 
     async def callback(self, interaction: discord.Interaction):
@@ -184,14 +185,14 @@ Welcome {self.member.mention}
 """
         await interaction.response.edit_message(content=content, view=self)
 
-    @discord.ui.button(label="Submit Details", style=discord.ButtonStyle.green)
+    @discord.ui.button(label="Submit Details", style=discord.ButtonStyle.green, custom_id="tier_submit")
     async def submit(self, interaction: discord.Interaction, button: Button):
         await interaction.response.send_message(
             f"✅ Details Submitted\nRegion: `{self.region}`\nGamemode: `{self.mode}`",
             ephemeral=True
         )
 
-    @discord.ui.button(label="Close Ticket", style=discord.ButtonStyle.red)
+    @discord.ui.button(label="Close Ticket", style=discord.ButtonStyle.red, custom_id="tier_close")
     async def close(self, interaction: discord.Interaction, button: Button):
         await interaction.channel.delete()
 
@@ -200,11 +201,11 @@ class TicketButtons(View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Claim", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="Claim", style=discord.ButtonStyle.blurple, custom_id="ticket_claim")
     async def claim(self, interaction: discord.Interaction, button: Button):
         await interaction.response.send_message(f"Claimed by {interaction.user.mention}")
 
-    @discord.ui.button(label="Close", style=discord.ButtonStyle.red)
+    @discord.ui.button(label="Close", style=discord.ButtonStyle.red, custom_id="ticket_close")
     async def close(self, interaction: discord.Interaction, button: Button):
         await asyncio.sleep(2)
         await interaction.channel.delete()
@@ -245,7 +246,7 @@ class MainPanel(View):
 
         await interaction.response.send_message("✅ Ticket created", ephemeral=True)
 
-    @discord.ui.button(label="♛ Tier Test", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="♛ Tier Test", style=discord.ButtonStyle.blurple, custom_id="panel_tier")
     async def tier(self, interaction: discord.Interaction, button: Button):
         await self.create_ticket(interaction, "tier-test")
 
@@ -257,7 +258,6 @@ async def panel(interaction: discord.Interaction):
         description="### Click the button below to test your tier.",
         color=discord.Color.blue()
     )
-    # GIF on top
     embed.set_image(url="https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif")
 
     await interaction.response.send_message(embed=embed, view=MainPanel())
