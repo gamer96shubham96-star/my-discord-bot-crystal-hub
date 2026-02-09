@@ -73,7 +73,7 @@ async def on_ready():
     ],
     result=[
         app_commands.Choice(name="WON", value="WON"),
-        app_commands.Choice(name="LOST", value="LOST"),  # Changed LOSE → LOST
+        app_commands.Choice(label="LOST", value="LOST"),  # Changed LOSE → LOST
     ],
 )
 async def tier(
