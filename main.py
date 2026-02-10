@@ -23,6 +23,7 @@ client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
 ticket_config: dict[str, int] = {}
+ticket_owners: dict[int, int] = {}  # channel_id -> user_id
 user_selections: dict[tuple[int, int], dict] = {}  # Key: (user_id, channel_id), Value: {'region': str, 'mode': str}
 
 # List of interesting quotes for flair in tickets
