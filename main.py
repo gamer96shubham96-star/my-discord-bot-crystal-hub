@@ -250,7 +250,7 @@ class TicketButtons(View):
 
 class ClaimButton(Button):
     def __init__(self):
-        super().__init__(label="Claim", style=discord.ButtonStyle.blurple, custom_id="ticket_claim_btn")
+        super().__init__(label="Claim", style=discord.ButtonStyle.green, custom_id="ticket_claim_btn")
 
     async def callback(self, interaction: discord.Interaction):
         if "staff_role" not in ticket_config or not interaction.user.get_role(ticket_config["staff_role"]):
@@ -374,7 +374,7 @@ class MainPanel(View):
 @tree.command(name="panel", description="Send ticket panel", guild=discord.Object(id=GUILD_ID))
 async def panel(interaction: discord.Interaction):
     # Crazy hype text for the description
-    crazy_text = "**🚀 Test Your Tier! 🚀**\n\n**CRYSTAL PVP,NETHPOT,SMP,SWORD ARE AVAILABLE,TEST NOW!**\n\n**💥 TEST & GET LOST 💥**\n\n**Select your region, choose your mode, and LET'S GET THIS PARTY STARTED!**\n\n**🔥 WARNING: DON'T WASTE STAFF TIME! 🔥**"
+    crazy_text = "**🚀 Test Your Tier! 🚀**\n\n**CRYSTAL PVP,NETHPOT,SMP,SWORD ARE AVAILABLE,TEST NOW!**\n\n**💥 TEST & GIVE YOUR BEST! 💥**\n\n**Select your region, choose your mode, and LET'S GET THIS PARTY STARTED!**\n\n**🔥 WARNING: DON'T WASTE STAFF TIME! 🔥**"
     
     # Fun PvP/Gaming GIF URL (replace with a working one if needed)
     gif_url = "https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif"  # Example: Replace with a real GIF URL like a fighting or gaming one
@@ -386,7 +386,7 @@ async def panel(interaction: discord.Interaction):
         timestamp=discord.utils.utcnow()
     )
     embed.set_image(url=gif_url)  # GIF as image
-    embed.set_footer(text="**Get ready to CLASH!**", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+    embed.set_footer(text="**Get ready to TEST!**", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
     
     await interaction.response.send_message(embed=embed, view=MainPanel())
 
