@@ -136,12 +136,6 @@ Test again in 1 month!
 
     # Log the action
     logger.info(f"Tier result posted by {interaction.user}: Tester {tester}, User {user}, Result {result.value}")
-    
-    # Send the formatted message
-    await interaction.response.send_message(result_text)
-
-    # Log the action
-    logger.info(f"Tier result posted by {interaction.user}: Tester {tester}, User {user}, Result {result.value}")
 
 @tree.command(name="setup_tickets", description="Setup ticket system", guild=discord.Object(id=GUILD_ID))
 @app_commands.checks.has_permissions(administrator=True)
@@ -355,22 +349,21 @@ class MainPanel(View):
             await interaction.response.send_message("Ticket channel created, but bot lacks send permissions. Check bot roles.", ephemeral=True)
             return
 
-ticket_owners[channel.id] = interaction.user.id
+        ticket_owners[channel.id] = interaction.user.id
 
-welcome_embed = discord.Embed(
-    title="🎫 Welcome to Your Tier Test Ticket!",
-    description=f"Hello {interaction.user.mention}!\n\nPlease select your Region and Mode below and submit.\n\n{random.choice(interesting_quotes)}",
-    color=discord.Color.blue(),
-    timestamp=discord.utils.utcnow()
-)
+        welcome_embed = discord.Embed(
+            title="🎫 Welcome to Your Tier Test Ticket!",
+            description=f"Hello {interaction.user.mention}!\n\nPlease select your Region and Mode below and submit.\n\n{random.choice(interesting_quotes)}",
+            color=discord.Color.blue(),
+            timestamp=discord.utils.utcnow()
+        )
 
-await channel.send(embed=welcome_embed, view=TierTicketView())
-await channel.send("Staff Controls:", view=TicketButtons())
+        await channel.send(embed=welcome_embed, view=TierTicketView())
+        await channel.send("Staff Controls:", view=TicketButtons())
 
-            await channel.send(embed=ticket_embed, view=TicketButtons())
-            await interaction.response.send_message(f"✅ Ticket created: {channel.mention}\n\nHead over to the channel to proceed!", ephemeral=True)
+        await interaction.response.send_message(f"✅ Ticket created: {channel.mention}\n\nHead over to the channel to proceed!", ephemeral=True)
 
-            logger.info(f"Ticket created by {interaction.user}: Channel {channel_name}")
+        logger.info(f"Ticket created by {interaction.user}: Channel {channel_name}")
         except Exception as e:
             logger.error(f"Error sending embeds/views to ticket channel: {e}")
             await interaction.response.send_message("Ticket channel created, but setup failed. Check the channel for issues.", ephemeral=True)
