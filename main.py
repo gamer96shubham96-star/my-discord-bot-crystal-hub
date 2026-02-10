@@ -400,17 +400,27 @@ class MainPanel(View):
 
             ticket_owners[channel.id] = interaction.user.id
 
-            await channel.send(
-            welcome_embed = discord.Embed(
-                title="🎫 Welcome to Your Tier Test Ticket!",
-                description=f"Hello {interaction.user.mention}! We're excited to help you with your tier test.\n\n{random.choice(interesting_quotes)}\n\nPlease select your Region and Mode below, then submit your request.\n\nNote: Selections are one-time only after submission.",
-                color=discord.Color.blue(),
-                timestamp=discord.utils.utcnow()
-            )
-            welcome_embed.set_footer(text="Ticket created", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
-            await channel.send(embed=welcome_embed,
-                view=TierTicketView()
-            )
+welcome_embed = discord.Embed(
+    title="🎫 Welcome to Your Tier Test Ticket!",
+    description=(
+        f"Hello {interaction.user.mention}! We're excited to help you with your tier test.\n\n"
+        f"{random.choice(interesting_quotes)}\n\n"
+        "Please select your Region and Mode below, then submit your request.\n\n"
+        "Note: Selections are one-time only after submission."
+    ),
+    color=discord.Color.blue(),
+    timestamp=discord.utils.utcnow()
+)
+
+welcome_embed.set_footer(
+    text="Ticket created",
+    icon_url=interaction.user.avatar.url if interaction.user.avatar else None
+)
+
+await channel.send(
+    embed=welcome_embed,
+    view=TierTicketView()
+)
 
             await channel.send("", view=TicketButtons())
 
