@@ -46,7 +46,6 @@ async def on_ready():
 
     # Add persistent views to handle interactions even after restart
     client.add_view(MainPanel())
-    client.add_view(TicketButtons())
     client.add_view(TierTicketView())
 
     logger.info(f"✅ Logged in as {client.user}")
