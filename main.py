@@ -27,11 +27,11 @@ user_selections: dict[tuple[int, int], dict] = {}  # Key: (user_id, channel_id),
 
 # List of interesting quotes for flair in tickets
 interesting_quotes = [
-    "Skill is not just about winning, it's about growth.",
-    "Every challenge is an opportunity to rise.",
-    "PvP is not a game, it's a battlefield of wits.",
-    "Tier up or step down – the choice is yours.",
-    "In the world of PvP, only the strong survive... or adapt."
+    "Shubham96 Is The Best Crystal Tester In These Server!",
+    "qbhishekyt_11 Is The Best Nethpot Tester Here.",
+    "Get Well Known With Your Tier.",
+    "Tier Is Essential For A Player's Identity!",
+    "Tier Test In Every One Month!"
 ]
 
 @client.event
@@ -127,7 +127,8 @@ async def tier(
 ### Think you can outperform this result?  
 Test again in 1 month!
 
-[]"""
+[https://media.giphy.com/media/MScmyZctK91GfATYob/giphy.gif]
+"""
 
     # Send the formatted message
     await interaction.response.send_message(result_text)
@@ -243,8 +244,30 @@ class TierTicketView(View):
 class TicketButtons(View):
     def __init__(self):
         super().__init__(timeout=None)
-        self.add_item(ClaimButton())
-        self.add_item(CloseButton())
+
+    @discord.ui.button(label="Claim", style=discord.ButtonStyle.blurple, custom_id="ticket_claim_btn")
+    async def claim(self, interaction: discord.Interaction, button: Button):
+        if "staff_role" not in ticket_config or not interaction.user.get_role(ticket_config["staff_role"]):
+            await interaction.response.send_message("You do not have permission to claim this ticket.", ephemeral=True)
+            return
+
+        embed = discord.Embed(
+            title="✅ Ticket Claimed",
+            description=f"Claimed by: {interaction.user.mention}\n\n{random.choice(interesting_quotes)}",
+            color=discord.Color.blue(),
+            timestamp=discord.utils.utcnow()
+        )
+        await interaction.response.send_message(embed=embed)
+
+    @discord.ui.button(label="Close Ticket", style=discord.ButtonStyle.red, custom_id="ticket_close_btn")
+    async def close(self, interaction: discord.Interaction, button: Button):
+        if "staff_role" not in ticket_config or not interaction.user.get_role(ticket_config["staff_role"]):
+            await interaction.response.send_message("You do not have permission to close this ticket.", ephemeral=True)
+            return
+
+        await interaction.response.send_message("🔒 Closing ticket in 5 seconds...")
+        await asyncio.sleep(5)
+        await interaction.channel.delete()
 
 class ClaimButton(Button):
     def __init__(self):
@@ -332,15 +355,6 @@ class MainPanel(View):
         except Exception as e:
             logger.error(f"Error creating ticket channel: {e}")
             await interaction.response.send_message("Failed to create ticket channel. Check permissions or try again.", ephemeral=True)
-            return
-
-        # Test sending a simple message first to check permissions
-        try:
-            test_msg = await channel.send("Testing permissions...")
-            await test_msg.delete()  # Delete test message
-        except Exception as e:
-            logger.error(f"Bot cannot send messages in ticket channel: {e}")
-            await interaction.response.send_message("Ticket channel created, but bot lacks send permissions. Check bot roles.", ephemeral=True)
             return
 
         try:
