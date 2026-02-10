@@ -6,40 +6,34 @@ from discord import app_commands
 from discord.ui import View, Button, Select
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
-# -------------------- CONFIG --------------------
 TOKEN = os.getenv("TOKEN")
-GUILD_ID = int(os.getenv("GUILD_ID", 1466825673384394824))
+GUILD_ID = int(os.getenv("GUILD_ID", "0"))
 
-# -------------------- INTENTS --------------------
 intents = discord.Intents.default()
-intents.members = True  # Needed for Member objects
-intents.message_content = True  # Needed for interaction responses
+intents.members = True
+intents.message_content = True
+
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
 ticket_config: dict[str, int] = {}
 
-# -------------------- READY --------------------
+
 @client.event
 async def on_ready():
-    guild = client.get_guild(GUILD_ID)
-    if guild is None:
-        guild = discord.Object(id=GUILD_ID)
+    guild_obj = discord.Object(id=GUILD_ID)
+    await tree.sync(guild=guild_obj)
 
-    # Clear and sync commands for the guild
-    await tree.sync(guild=guild)
-
-    # Add persistent views
     client.add_view(MainPanel())
     client.add_view(TicketButtons())
 
     print(f"✅ Logged in as {client.user} - Commands synced!")
 
+
 # -------------------- TIER RESULT COMMAND --------------------
-@tree.command(name="tier", description="Post official tier result")
+@tree.command(name="tier", description="Post official tier result", guild=discord.Object(id=GUILD_ID))
 @app_commands.describe(
     tester="Tester",
     user="Player",
@@ -60,7 +54,7 @@ async def on_ready():
     ],
     mode=[
         app_commands.Choice(name="Crystal PvP", value="Crystal PvP"),
-        app_commands.Choice(name="NethPot PvP", value="NethPot"),
+        app_commands.Choice(name="NethPot PvP", value="NethPot PvP"),
         app_commands.Choice(name="SMP PvP", value="SMP PvP"),
         app_commands.Choice(name="Sword", value="Sword"),
     ],
@@ -85,8 +79,7 @@ async def tier(
     score: str,
     result: app_commands.Choice[str],
 ):
-    msg = f"""
-|| @everyone ||
+    msg = f"""|| @everyone ||
 
 ## ⛨ Crystal Hub • OFFICIAL Tier RESULT ⛨
 
@@ -113,8 +106,9 @@ async def tier(
 """
     await interaction.response.send_message(msg)
 
+
 # -------------------- TICKET SETUP COMMAND --------------------
-@tree.command(name="setup_tickets", description="Setup ticket system")
+@tree.command(name="setup_tickets", description="Setup ticket system", guild=discord.Object(id=GUILD_ID))
 @app_commands.checks.has_permissions(administrator=True)
 async def setup_tickets(
     interaction: discord.Interaction,
@@ -125,7 +119,8 @@ async def setup_tickets(
     ticket_config["staff_role"] = staff_role.id
     await interaction.response.send_message("✅ Ticket system configured", ephemeral=True)
 
-# -------------------- REGION & MODE SELECTS --------------------
+
+# -------------------- SELECTS --------------------
 class RegionSelect(Select):
     def __init__(self, view):
         options = [
@@ -134,12 +129,13 @@ class RegionSelect(Select):
             discord.SelectOption(label="North America"),
             discord.SelectOption(label="South America"),
         ]
-        super().__init__(placeholder="Select your Region", options=options, custom_id="region_select")
+        super().__init__(placeholder="Select your Region", options=options)
         self.view_ref = view
 
     async def callback(self, interaction: discord.Interaction):
         self.view_ref.region = self.values[0]
         await self.view_ref.refresh(interaction)
+
 
 class ModeSelect(Select):
     def __init__(self, view):
@@ -149,12 +145,13 @@ class ModeSelect(Select):
             discord.SelectOption(label="SMP PvP"),
             discord.SelectOption(label="Sword"),
         ]
-        super().__init__(placeholder="Select your Gamemode", options=options, custom_id="mode_select")
+        super().__init__(placeholder="Select your Gamemode", options=options)
         self.view_ref = view
 
     async def callback(self, interaction: discord.Interaction):
         self.view_ref.mode = self.values[0]
         await self.view_ref.refresh(interaction)
+
 
 # -------------------- TIER TEST VIEW --------------------
 class TierTicketView(View):
@@ -167,8 +164,7 @@ class TierTicketView(View):
         self.add_item(ModeSelect(self))
 
     async def refresh(self, interaction: discord.Interaction):
-        content = f"""
-# ⛨ TIER TEST TICKET ⛨
+        content = f"""# ⛨ TIER TEST TICKET ⛨
 
 Welcome {self.member.mention}
 
@@ -180,39 +176,51 @@ Welcome {self.member.mention}
 """
         await interaction.response.edit_message(content=content, view=self)
 
-    @discord.ui.button(label="Submit Details", style=discord.ButtonStyle.green, custom_id="tier_submit")
+    @discord.ui.button(label="Submit Details", style=discord.ButtonStyle.green)
     async def submit(self, interaction: discord.Interaction, button: Button):
         await interaction.response.send_message(
             f"✅ Details Submitted\nRegion: `{self.region}`\nGamemode: `{self.mode}`",
             ephemeral=True
         )
 
-    @discord.ui.button(label="Close Ticket", style=discord.ButtonStyle.red, custom_id="tier_close")
+    @discord.ui.button(label="Close Ticket", style=discord.ButtonStyle.red)
     async def close(self, interaction: discord.Interaction, button: Button):
         await interaction.channel.delete()
+
 
 # -------------------- NORMAL TICKET BUTTONS --------------------
 class TicketButtons(View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Claim", style=discord.ButtonStyle.blurple, custom_id="ticket_claim")
+    @discord.ui.button(label="Claim", style=discord.ButtonStyle.blurple)
     async def claim(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_message(f"Claimed by {interaction.user.mention}", ephemeral=True)
+        await interaction.response.send_message(
+            f"Claimed by {interaction.user.mention}", ephemeral=True
+        )
 
-    @discord.ui.button(label="Close", style=discord.ButtonStyle.red, custom_id="ticket_close")
+    @discord.ui.button(label="Close", style=discord.ButtonStyle.red)
     async def close(self, interaction: discord.Interaction, button: Button):
         await asyncio.sleep(2)
         await interaction.channel.delete()
 
-# -------------------- PANEL BUTTONS --------------------
+
+# -------------------- PANEL --------------------
 class MainPanel(View):
     def __init__(self):
         super().__init__(timeout=None)
 
     async def create_ticket(self, interaction: discord.Interaction, reason: str):
+        if "category" not in ticket_config or "staff_role" not in ticket_config:
+            await interaction.response.send_message(
+                "❌ Ticket system not configured. Use /setup_tickets first.",
+                ephemeral=True
+            )
+            return
+
         guild = interaction.guild
         member = interaction.user
+
         category = guild.get_channel(ticket_config["category"])
         staff_role = guild.get_role(ticket_config["staff_role"])
 
@@ -231,31 +239,32 @@ class MainPanel(View):
         if reason == "tier-test":
             await channel.send(
                 f"# ⛨ Tier Test Ticket ⛨\nWelcome {member.mention}",
-                view=TierTicketView(member)
+                view=TierTicketView(member),
             )
         else:
             await channel.send(
                 f"# Ticket: {reason}\n{member.mention}",
-                view=TicketButtons()
+                view=TicketButtons(),
             )
 
         await interaction.response.send_message("✅ Ticket created", ephemeral=True)
 
-    @discord.ui.button(label="♛ Tier Test", style=discord.ButtonStyle.blurple, custom_id="panel_tier")
+    @discord.ui.button(label="♛ Tier Test", style=discord.ButtonStyle.blurple)
     async def tier(self, interaction: discord.Interaction, button: Button):
         await self.create_ticket(interaction, "tier-test")
 
+
 # -------------------- PANEL COMMAND --------------------
-@tree.command(name="panel", description="Send ticket panel")
+@tree.command(name="panel", description="Send ticket panel", guild=discord.Object(id=GUILD_ID))
 async def panel(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=False)
     embed = discord.Embed(
         title="⛨ Tier-Test Panel ⛨",
         description="### Click the button below to test your tier.",
-        color=discord.Color.blue()
+        color=discord.Color.blue(),
     )
     embed.set_image(url="https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif")
-    await interaction.followup.send(embed=embed, view=MainPanel())
+    await interaction.response.send_message(embed=embed, view=MainPanel())
+
 
 # -------------------- RUN --------------------
 if __name__ == "__main__":
