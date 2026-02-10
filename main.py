@@ -251,7 +251,7 @@ class TicketButtons(View):
 
 class ClaimButton(Button):
     def __init__(self):
-        super().__init__(label="Claim", style=discord.ButtonStyle.blurple, custom_id="ticket_claim_btn")
+        super().__init__(label="Claim", style=discord.ButtonStyle.green, custom_id="ticket_claim_btn")
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
@@ -358,7 +358,7 @@ class MainPanel(View):
             )
 
             await channel.send(embed=welcome_embed, view=TierTicketView())
-            await channel.send("Staff Controls:", view=TicketButtons())
+            await channel.send("", view=TicketButtons())
 
             await interaction.response.send_message(
                 f"✅ Ticket created: {channel.mention}\n\nHead over to the channel to proceed!",
