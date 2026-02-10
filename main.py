@@ -5,6 +5,7 @@ from discord import app_commands
 from discord.ui import View, Button, Select
 from dotenv import load_dotenv
 import logging
+import random  # For adding some "interesting" random elements, like quotes
 
 # Set up logging for better debugging and professionalism
 logging.basicConfig(level=logging.INFO)
@@ -22,6 +23,15 @@ client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
 ticket_config: dict[str, int] = {}
+
+# List of interesting quotes for flair in tickets
+interesting_quotes = [
+    "Skill is not just about winning, it's about growth.",
+    "Every challenge is an opportunity to rise.",
+    "PvP is not a game, it's a battlefield of wits.",
+    "Tier up or step down – the choice is yours.",
+    "In the world of PvP, only the strong survive... or adapt."
+]
 
 @client.event
 async def on_ready():
@@ -87,23 +97,39 @@ async def tier(
     score: str,
     result: app_commands.Choice[str],
 ):
-    # Create an embed for a professional look
-    embed = discord.Embed(
-        title="🏆 Tier Test Result",
-        color=discord.Color.blue()
-    )
-    embed.add_field(name="Tester", value=tester.mention, inline=True)
-    embed.add_field(name="Player", value=user.mention, inline=True)
-    embed.add_field(name="Region", value=region.value, inline=True)
-    embed.add_field(name="Mode", value=mode.value, inline=True)
-    embed.add_field(name="Account Type", value=account.value, inline=True)
-    embed.add_field(name="Previous Tier", value=previous_tier, inline=True)
-    embed.add_field(name="Earned Tier", value=earned_tier, inline=True)
-    embed.add_field(name="Score", value=score, inline=True)
-    embed.add_field(name="Result", value=result.value, inline=True)
-    embed.set_footer(text=f"Posted by {interaction.user}", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+    # Custom formatted result message
+    result_text = f"""⛨  {mode.value} Tier • OFFICIAL TIER RESULTS  ⛨
+⚚ Tester
+{tester.mention} | Only SA/NA 
+◈ Candidate
+{user.mention} 
+🌍 Region
+{region.value}
+⛨ Gamemode
+{mode.value}
+⌬ Account Type
+{account.value}
+------------------
+⬖ Previous Tier
+{previous_tier}
+---
+⬗ Tier Achieved
+{earned_tier}
+---
+✦ Match Score
+{score}
+------------------
+⛨ RESULT: {result.value} ⛨
+Think you can outperform this result?
+Test again in 1 month!
 
-    await interaction.response.send_message(embed=embed)
+[Blank space for GIF - You can add a GIF URL here or attach one below]"""
+
+    # Send the formatted message
+    await interaction.response.send_message(result_text)
+
+    # Log the action
+    logger.info(f"Tier result posted by {interaction.user}: Tester {tester}, User {user}, Result {result.value}")
 
 @tree.command(name="setup_tickets", description="Setup ticket system", guild=discord.Object(id=GUILD_ID))
 @app_commands.checks.has_permissions(administrator=True)
@@ -117,9 +143,14 @@ async def setup_tickets(
     embed = discord.Embed(
         title="✅ Ticket System Configured",
         description=f"Category: {category.mention}\nStaff Role: {staff_role.mention}",
-        color=discord.Color.green()
+        color=discord.Color.green(),
+        timestamp=discord.utils.utcnow()
     )
+    embed.set_footer(text="Configuration completed", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
     await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    # Log the setup
+    logger.info(f"Ticket system configured by {interaction.user}: Category {category.name}, Staff Role {staff_role.name}")
 
 # -------------------- PERSISTENT COMPONENTS --------------------
 
@@ -183,10 +214,16 @@ class TierTicketView(View):
         # Send a message to the channel with the request details
         embed = discord.Embed(
             title="🎫 Tier Test Request Submitted",
-            description=f"**Requester:** {interaction.user.mention}\n**Region:** {region}\n**Mode:** {mode}",
-            color=discord.Color.orange()
+            description=f"**Requester:** {interaction.user.mention}\n**Region:** {region}\n**Mode:** {mode}\n\n*{random.choice(interesting_quotes)}*",
+            color=discord.Color.orange(),
+            timestamp=discord.utils.utcnow()
         )
+        embed.set_footer(text="Request submitted", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
         await interaction.response.send_message(embed=embed)
+
+        # Log the submission
+        logger.info(f"Tier test request submitted by {interaction.user}: Region {region}, Mode {mode}")
+
         # Optionally, notify staff (if staff_role is set)
         if "staff_role" in ticket_config:
             staff_role = interaction.guild.get_role(ticket_config["staff_role"])
@@ -205,10 +242,15 @@ class TicketButtons(View):
             return
         embed = discord.Embed(
             title="✅ Ticket Claimed",
-            description=f"Claimed by {interaction.user.mention}",
-            color=discord.Color.blue()
+            description=f"Claimed by {interaction.user.mention}\n\n*{random.choice(interesting_quotes)}*",
+            color=discord.Color.blue(),
+            timestamp=discord.utils.utcnow()
         )
+        embed.set_footer(text="Ticket claimed", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
         await interaction.response.send_message(embed=embed)
+
+        # Log the claim
+        logger.info(f"Ticket claimed by {interaction.user} in channel {interaction.channel.name}")
 
     @discord.ui.button(label="Close", style=discord.ButtonStyle.red, custom_id="ticket_close_btn")
     async def close(self, interaction: discord.Interaction, button: Button):
@@ -218,10 +260,16 @@ class TicketButtons(View):
             return
         embed = discord.Embed(
             title="🔒 Ticket Closed",
-            description="This ticket has been closed.",
-            color=discord.Color.red()
+            description=f"Closed by {interaction.user.mention}\n\n*{random.choice(interesting_quotes)}*",
+            color=discord.Color.red(),
+            timestamp=discord.utils.utcnow()
         )
+        embed.set_footer(text="Ticket closed", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
         await interaction.response.send_message(embed=embed)
+
+        # Log the close
+        logger.info(f"Ticket closed by {interaction.user} in channel {interaction.channel.name}")
+
         await asyncio.sleep(5)  # Give time to read
         await interaction.channel.delete()
 
@@ -250,31 +298,40 @@ class MainPanel(View):
         }
         channel = await category.create_text_channel(channel_name, overwrites=overwrites)
 
-        # Send the tier request view in the new channel
-        embed = discord.Embed(
-            title="🎫 Tier Test Request",
-            description="Please select your Region and Mode, then submit your request.",
-            color=discord.Color.blue()
+        # Send a welcome message with interesting quote
+        welcome_embed = discord.Embed(
+            title="🎫 Welcome to Your Tier Test Ticket!",
+            description=f"Hello {interaction.user.mention}! We're excited to help you with your tier test.\n\n*{random.choice(interesting_quotes)}*\n\nPlease select your Region and Mode below, then submit your request.",
+            color=discord.Color.blue(),
+            timestamp=discord.utils.utcnow()
         )
-        await channel.send(embed=embed, view=TierTicketView())
+        welcome_embed.set_footer(text="Ticket created", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+        await channel.send(embed=welcome_embed, view=TierTicketView())
 
         # Send ticket buttons for staff
         ticket_embed = discord.Embed(
             title="Staff Controls",
-            description="Use the buttons below to manage this ticket.",
-            color=discord.Color.grey()
+            description="Use the buttons below to manage this ticket.\n\n*Remember, every ticket is a step towards mastery!*",
+            color=discord.Color.grey(),
+            timestamp=discord.utils.utcnow()
         )
+        ticket_embed.set_footer(text="Staff panel", icon_url=client.user.avatar.url if client.user.avatar else None)
         await channel.send(embed=ticket_embed, view=TicketButtons())
 
         await interaction.response.send_message(f"✅ Ticket created: {channel.mention}", ephemeral=True)
+
+        # Log the ticket creation
+        logger.info(f"Ticket created by {interaction.user}: Channel {channel_name}")
 
 @tree.command(name="panel", description="Send ticket panel", guild=discord.Object(id=GUILD_ID))
 async def panel(interaction: discord.Interaction):
     embed = discord.Embed(
         title="🎫 Ticket Panel",
-        description="Click the button below to create a tier test ticket.",
-        color=discord.Color.green()
+        description="Click the button To Get Tier Test.\n\n*Ready to prove your skills? Let's begin!*",
+        color=discord.Color.blurple(),
+        timestamp=discord.utils.utcnow()
     )
+    embed.set_footer(text="Panel sent", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
     await interaction.response.send_message(embed=embed, view=MainPanel())
 
 if __name__ == "__main__":
