@@ -97,30 +97,33 @@ async def tier(
     score: str,
     result: app_commands.Choice[str],
 ):
-    # Custom formatted result message
-    result_text = f"""⛨  {mode.value} Tier • OFFICIAL TIER RESULTS  ⛨
-⚚ Tester
-{tester.mention} | Only SA/NA 
-◈ Candidate
-{user.mention} 
-🌍 Region
-{region.value}
-⛨ Gamemode
-{mode.value}
-⌬ Account Type
-{account.value}
+    # Exact custom formatted result message as requested
+    result_text = f"""|| @everyone ||
+## ⛨  {mode.value} Tier • OFFICIAL TIER RESULTS  ⛨
+
+### ⚚ Tester
+{tester.mention}
+### ◈ Candidate
+{user.mention}
+### :earth_africa: Region
+`{region.value}`
+### ⛨ Gamemode
+`{mode.value}`
+### ⌬ Account Type
+`{account.value}`
 ------------------
-⬖ Previous Tier
-{previous_tier}
+### ⬖ Previous Tier
+**{previous_tier}**
 ---
-⬗ Tier Achieved
-{earned_tier}
+### ⬗ Tier Achieved
+**{earned_tier}**
 ---
-✦ Match Score
-{score}
+### ✦ Match Score
+`{score}`
 ------------------
-⛨ RESULT: {result.value} ⛨
-Think you can outperform this result?
+## ⛨ RESULT: **{result.value}** ⛨
+
+### Think you can outperform this result?  
 Test again in 1 month!
 
 [Blank space for GIF - You can add a GIF URL here or attach one below]"""
@@ -137,12 +140,14 @@ async def setup_tickets(
     interaction: discord.Interaction,
     category: discord.CategoryChannel,
     staff_role: discord.Role,
+    logs_channel: discord.TextChannel,
 ):
     ticket_config["category"] = category.id
     ticket_config["staff_role"] = staff_role.id
+    ticket_config["logs_channel"] = logs_channel.id
     embed = discord.Embed(
         title="✅ Ticket System Configured",
-        description=f"Category: {category.mention}\nStaff Role: {staff_role.mention}",
+        description=f"Category: {category.mention}\nStaff Role: {staff_role.mention}\nLogs Channel: {logs_channel.mention}",
         color=discord.Color.green(),
         timestamp=discord.utils.utcnow()
     )
@@ -150,7 +155,7 @@ async def setup_tickets(
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
     # Log the setup
-    logger.info(f"Ticket system configured by {interaction.user}: Category {category.name}, Staff Role {staff_role.name}")
+    logger.info(f"Ticket system configured by {interaction.user}: Category {category.name}, Staff Role {staff_role.name}, Logs Channel {logs_channel.name}")
 
 # -------------------- PERSISTENT COMPONENTS --------------------
 
@@ -258,6 +263,26 @@ class TicketButtons(View):
         if "staff_role" not in ticket_config or not interaction.user.get_role(ticket_config["staff_role"]):
             await interaction.response.send_message("You do not have permission to close this ticket.", ephemeral=True)
             return
+
+        # Generate transcript
+        logs_channel = interaction.guild.get_channel(ticket_config.get("logs_channel"))
+        if logs_channel:
+            # Fetch all messages in the channel
+            messages = []
+            async for message in interaction.channel.history(limit=None, oldest_first=True):
+                messages.append(f"[{message.created_at.strftime('%Y-%m-%d %H:%M:%S')}] {message.author}: {message.content}")
+            transcript = "\n".join(messages)
+
+            # Send transcript to logs channel
+            embed = discord.Embed(
+                title=f"📜 Ticket Transcript - {interaction.channel.name}",
+                description=f"Closed by {interaction.user.mention}\n\n**Transcript:**\n```\n{transcript[:4000]}\n```",  # Limit to 4000 chars for embed
+                color=discord.Color.red(),
+                timestamp=discord.utils.utcnow()
+            )
+            embed.set_footer(text="Transcript logged", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+            await logs_channel.send(embed=embed)
+
         embed = discord.Embed(
             title="🔒 Ticket Closed",
             description=f"Closed by {interaction.user.mention}\n\n*{random.choice(interesting_quotes)}*",
@@ -280,8 +305,8 @@ class MainPanel(View):
     @discord.ui.button(label="♛ Tier Test", style=discord.ButtonStyle.blurple, custom_id="panel_tier_btn")
     async def tier(self, interaction: discord.Interaction, button: Button):
         # Check if ticket system is configured
-        if "category" not in ticket_config or "staff_role" not in ticket_config:
-            await interaction.response.send_message("Ticket system is not configured. Please ask an admin to run `/setup_tickets`.", ephemeral=True)
+        if "category" not in ticket_config or "staff_role" not in ticket_config or "logs_channel" not in ticket_config:
+            await interaction.response.send_message("Ticket system is not fully configured. Please ask an admin to run `/setup_tickets` with category, staff role, and logs channel.", ephemeral=True)
             return
 
         category = interaction.guild.get_channel(ticket_config["category"])
@@ -327,8 +352,8 @@ class MainPanel(View):
 async def panel(interaction: discord.Interaction):
     embed = discord.Embed(
         title="🎫 Ticket Panel",
-        description="Click the button To Get Tier Test.\n\n*Ready to prove your skills? Let's begin!*",
-        color=discord.Color.blurple(),
+        description="Click the button below to create a tier test ticket.\n\n*Ready to prove your skills? Let's begin!*",
+        color=discord.Color.green(),
         timestamp=discord.utils.utcnow()
     )
     embed.set_footer(text="Panel sent", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
