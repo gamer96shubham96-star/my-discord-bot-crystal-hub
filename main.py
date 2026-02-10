@@ -9,8 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 TOKEN = os.getenv("TOKEN")
-GUILD_ID = int(os.getenv("1466825673384394824"))
-
+GUILD_ID = int(os.getenv("GUILD_ID", "1466825673384394824"))
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
