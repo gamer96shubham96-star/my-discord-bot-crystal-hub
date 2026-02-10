@@ -372,13 +372,13 @@ class MainPanel(View):
 @tree.command(name="panel", description="Send ticket panel", guild=discord.Object(id=GUILD_ID))
 async def panel(interaction: discord.Interaction):
     # Crazy hype text for the description
-    crazy_text = "**🚀 BLAST OFF INTO EPIC TIER TESTS! 🚀**\n\n**Are you ready to DOMINATE the leaderboards? Prove your SKILLS in the ultimate PvP showdown!**\n\n**💥 Unleash your inner WARRIOR! 💥**\n\n**Select your region, choose your mode, and LET'S GET THIS PARTY STARTED!**\n\n**🔥 WARNING: Only the STRONG survive! 🔥**"
+    crazy_text = "**🚀 Test Your Tier! 🚀**\n\n**CRYSTAL PVP,NETHPOT,SMP,SWORD ARE AVAILABLE TEST NOW!**\n\n**💥 Unleash your inner WARRIOR! 💥**\n\n**Select your region, choose your mode**\n\n**🔥 WARNING: DON'T  WASTE STAFF TIME! 🔥**"
     
     # Fun PvP/Gaming GIF URL (replace with a working one if needed)
-    gif_url = "https://media.giphy.com/media/3o7TKz9bX9Z9Z9Z9Z9/giphy.gif"  # Example: Replace with a real GIF URL like a fighting or gaming one
+    gif_url = "https://giphy.com/gifs/intresting-MScmyZctK91GfATYob"  # Example: Replace with a real GIF URL like a fighting or gaming one
     
     embed = discord.Embed(
-        title="🎫 **ULTIMATE TIER TEST PANEL** 🎫",
+        title="🎫 **TIER TEST PANEL** 🎫",
         description=crazy_text,
         color=discord.Color.purple(),  # Crazy color
         timestamp=discord.utils.utcnow()
