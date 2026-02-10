@@ -245,9 +245,14 @@ class TierTicketView(View):
 class TicketButtons(View):
     def __init__(self):
         super().__init__(timeout=None)
+        self.add_item(ClaimButton())
+        self.add_item(CloseButton())
 
-    @discord.ui.button(label="Claim", style=discord.ButtonStyle.blurple, custom_id="ticket_claim_btn")
-    async def claim(self, interaction: discord.Interaction, button: Button):
+class ClaimButton(Button):
+    def __init__(self):
+        super().__init__(label="Claim", style=discord.ButtonStyle.blurple, custom_id="ticket_claim_btn")
+
+    async def callback(self, interaction: discord.Interaction):
         if "staff_role" not in ticket_config or not interaction.user.get_role(ticket_config["staff_role"]):
             await interaction.response.send_message("You do not have permission to claim this ticket.", ephemeral=True)
             return
@@ -262,8 +267,11 @@ class TicketButtons(View):
 
         logger.info(f"Ticket claimed by {interaction.user} in channel {interaction.channel.name}")
 
-    @discord.ui.button(label="Close Ticket", style=discord.ButtonStyle.red, custom_id="ticket_close_btn")
-    async def close(self, interaction: discord.Interaction, button: Button):
+class CloseButton(Button):
+    def __init__(self):
+        super().__init__(label="Close Ticket", style=discord.ButtonStyle.red, custom_id="ticket_close_btn")
+
+    async def callback(self, interaction: discord.Interaction):
         if "staff_role" not in ticket_config or not interaction.user.get_role(ticket_config["staff_role"]):
             await interaction.response.send_message("You do not have permission to close this ticket.", ephemeral=True)
             return
