@@ -127,11 +127,15 @@ async def tier(
 ### Think you can outperform this result?  
 Test again in 1 month!
 
-    embed = discord.Embed(description=text, color=discord.Color.gold())
+"""
+
+    # Create embed with the text as description and GIF as image
+    embed = discord.Embed(description=result_text, color=discord.Color.gold())
     embed.set_image(url="https://media.giphy.com/media/oWWA8hYwrlk8Yrp6lo/giphy.gif")
     await interaction.response.send_message(embed=embed)
 
-    """
+    # Log the action
+    logger.info(f"Tier result posted by {interaction.user}: Tester {tester}, User {user}, Result {result.value}")
     
     # Send the formatted message
     await interaction.response.send_message(result_text)
