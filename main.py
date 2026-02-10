@@ -22,9 +22,11 @@ ticket_config: dict[str, int] = {}
 
 @client.event
 async def on_ready():
-    await tree.sync(guild=discord.Object(id=GUILD_ID))
+    guild = discord.Object(id=GUILD_ID)
 
-    # Persistent views MUST have custom_id + no timeout
+    tree.copy_global_to(guild=guild)
+    await tree.sync(guild=guild)
+
     client.add_view(MainPanel())
     client.add_view(TicketButtons())
     client.add_view(TierTicketViewPlaceholder())
