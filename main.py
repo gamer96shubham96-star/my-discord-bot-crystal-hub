@@ -389,7 +389,7 @@ async def panel(interaction: discord.Interaction):
     crazy_text = "**🚀 Test Your Tier! 🚀**\n\n**CRYSTAL PVP,NETHPOT,SMP,SWORD ARE AVAILABLE TEST NOW!**\n\n**💥 Unleash your inner WARRIOR! 💥**\n\n**Select your region, choose your mode**\n\n**🔥 WARNING: DON'T  WASTE STAFF TIME! 🔥**"
     
     # Fun PvP/Gaming GIF URL (replace with a working one if needed)
-    gif_url = "https://giphy.com/gifs/intresting-MScmyZctK91GfATYob"  # Example: Replace with a real GIF URL like a fighting or gaming one
+    gif_url = "https://giphy.com/gifs/pfc6QJ3z8l3kmrC6TA.giphy.gif"  # Example: Replace with a real GIF URL like a fighting or gaming one
     
     embed = discord.Embed(
         title="🎫 **TIER TEST PANEL** 🎫",
