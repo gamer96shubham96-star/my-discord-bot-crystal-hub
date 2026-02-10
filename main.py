@@ -295,6 +295,19 @@ class ClaimButton(Button):
         await interaction.message.edit(view=self.view)
         await interaction.followup.send(f"✅ Ticket claimed by {claimer.mention}")
         
+async def generate_transcript(channel: discord.TextChannel) -> str:
+    lines = []
+    async for msg in channel.history(limit=None, oldest_first=True):
+        timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M:%S")
+        author = f"{msg.author} ({msg.author.id})"
+
+        content = msg.content or ""
+        if msg.attachments:
+            content += " " + " ".join(a.url for a in msg.attachments)
+
+        lines.append(f"[{timestamp}] {author}: {content}")
+
+    return "\n".join(lines)
 
 class CloseButton(Button):
     def __init__(self):
