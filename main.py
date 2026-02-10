@@ -1,4 +1,5 @@
 import os
+import io
 import asyncio
 import discord
 from discord import app_commands
@@ -307,9 +308,38 @@ class CloseButton(Button):
             await interaction.followup.send("You do not have permission to close this ticket.", ephemeral=True)
             return
 
-        await interaction.followup.send("🔒 Closing ticket...")
+        channel = interaction.channel
+        logs_channel = interaction.guild.get_channel(ticket_config["logs_channel"])
+
+        await interaction.followup.send("🔒 Closing ticket and saving transcript...")
+
+        try:
+            # Generate transcript
+            transcript_text = await generate_transcript(channel)
+
+            # Create a text file from transcript
+            transcript_file = discord.File(
+                fp=io.StringIO(transcript_text),
+                filename=f"transcript-{channel.name}.txt"
+            )
+
+            # Send to logs channel
+            owner_id = ticket_owners.get(channel.id, "Unknown")
+
+            embed = discord.Embed(
+                title="📝 Ticket Transcript",
+                description=f"**Channel:** {channel.name}\n**Closed by:** {interaction.user.mention}\n**Owner ID:** {owner_id}",
+                color=discord.Color.red(),
+                timestamp=discord.utils.utcnow()
+            )
+
+            await logs_channel.send(embed=embed, file=transcript_file)
+
+        except Exception as e:
+            logger.error(f"Failed to create transcript: {e}")
+
         await asyncio.sleep(2)
-        await interaction.channel.delete()
+        await channel.delete()
 
 class MainPanel(View):
     def __init__(self):
