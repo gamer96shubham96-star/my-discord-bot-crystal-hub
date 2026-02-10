@@ -374,7 +374,6 @@ class MainPanel(View):
             await interaction.response.send_message("Ticket system not configured.", ephemeral=True)
             return
 
-        # Prevent duplicate tickets
         existing = find_existing_ticket(interaction.guild, interaction.user.id)
         if existing:
             await interaction.response.send_message(
@@ -400,29 +399,19 @@ class MainPanel(View):
 
             ticket_owners[channel.id] = interaction.user.id
 
-welcome_embed = discord.Embed(
-    title="🎫 Welcome to Your Tier Test Ticket!",
-    description=(
-        f"Hello {interaction.user.mention}! We're excited to help you with your tier test.\n\n"
-        f"{random.choice(interesting_quotes)}\n\n"
-        "Please select your Region and Mode below, then submit your request.\n\n"
-        "Note: Selections are one-time only after submission."
-    ),
-    color=discord.Color.blue(),
-    timestamp=discord.utils.utcnow()
-)
+            welcome_embed = discord.Embed(
+                title="🎫 Welcome to Your Tier Test Ticket!",
+                description=(
+                    f"Hello {interaction.user.mention}!\n\n"
+                    f"{random.choice(interesting_quotes)}\n\n"
+                    "Please select your Region and Mode below, then submit your request."
+                ),
+                color=discord.Color.blue(),
+                timestamp=discord.utils.utcnow()
+            )
 
-welcome_embed.set_footer(
-    text="Ticket created",
-    icon_url=interaction.user.avatar.url if interaction.user.avatar else None
-)
-
-await channel.send(
-    embed=welcome_embed,
-    view=TierTicketView()
-)
-
-            await channel.send("", view=TicketButtons())
+            await channel.send(embed=welcome_embed, view=TierTicketView())
+            await channel.send("Staff Controls:", view=TicketButtons())
 
             await interaction.response.send_message(
                 f"✅ Ticket created: {channel.mention}",
