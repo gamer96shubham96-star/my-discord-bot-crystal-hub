@@ -258,41 +258,44 @@ class ClaimButton(Button):
     def __init__(self):
         super().__init__(label="Claim", style=discord.ButtonStyle.blurple, custom_id="ticket_claim_btn")
 
-async def callback(self, interaction: discord.Interaction):
-    if "staff_role" not in ticket_config or not interaction.user.get_role(ticket_config["staff_role"]):
-        await interaction.response.send_message("You do not have permission to claim this ticket.", ephemeral=True)
-        return
+class ClaimButton(Button):
+    def __init__(self):
+        super().__init__(label="Claim", style=discord.ButtonStyle.blurple, custom_id="ticket_claim_btn")
 
-    channel = interaction.channel
-    owner_id = ticket_owners.get(channel.id)
+    async def callback(self, interaction: discord.Interaction):
+        if "staff_role" not in ticket_config or not interaction.user.get_role(ticket_config["staff_role"]):
+            await interaction.response.send_message("You do not have permission to claim this ticket.", ephemeral=True)
+            return
 
-    if not owner_id:
-        await interaction.response.send_message("Ticket owner not found.", ephemeral=True)
-        return
+        channel = interaction.channel
+        owner_id = ticket_owners.get(channel.id)
 
-    owner = interaction.guild.get_member(owner_id)
-    claimer = interaction.user
-    staff_role = interaction.guild.get_role(ticket_config["staff_role"])
+        if not owner_id:
+            await interaction.response.send_message("Ticket owner not found.", ephemeral=True)
+            return
 
-    # Rename channel
-    new_name = f"claimed-by-{claimer.name}".lower().replace(" ", "-")
-    await channel.edit(name=new_name)
+        owner = interaction.guild.get_member(owner_id)
+        claimer = interaction.user
+        staff_role = interaction.guild.get_role(ticket_config["staff_role"])
 
-    # Remove staff role access
-    await channel.set_permissions(staff_role, overwrite=discord.PermissionOverwrite(view_channel=False))
+        # Rename channel
+        new_name = f"claimed-by-{claimer.name}".lower().replace(" ", "-")
+        await channel.edit(name=new_name)
 
-    # Ensure only owner + claimer can see
-    await channel.set_permissions(owner, overwrite=discord.PermissionOverwrite(view_channel=True, send_messages=True))
-    await channel.set_permissions(claimer, overwrite=discord.PermissionOverwrite(view_channel=True, send_messages=True))
+        # Remove ALL staff access
+        await channel.set_permissions(staff_role, overwrite=discord.PermissionOverwrite(view_channel=False))
 
-    # Disable the claim button after use
-    for item in self.view.children:
-        if isinstance(item, Button) and item.custom_id == "ticket_claim_btn":
-            item.disabled = True
+        # Only owner and claimer can see
+        await channel.set_permissions(owner, overwrite=discord.PermissionOverwrite(view_channel=True, send_messages=True))
+        await channel.set_permissions(claimer, overwrite=discord.PermissionOverwrite(view_channel=True, send_messages=True))
 
-    await interaction.message.edit(view=self.view)
+        # Disable claim button
+        for item in self.view.children:
+            if isinstance(item, Button) and item.custom_id == "ticket_claim_btn":
+                item.disabled = True
 
-    await interaction.response.send_message(f"✅ Ticket claimed by {claimer.mention}")
+        await interaction.message.edit(view=self.view)
+        await interaction.response.send_message(f"✅ Ticket claimed by {claimer.mention}")
 
 class CloseButton(Button):
     def __init__(self):
@@ -380,7 +383,7 @@ class MainPanel(View):
                 timestamp=discord.utils.utcnow()
             )
             welcome_embed.set_footer(text="Ticket created", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
-            await channel.send(embed=welcome_embed, view=TierTicketView())
+            await channel.send(view=TicketButtons())
 
             await channel.send(embed=ticket_embed, view=TicketButtons())
             await interaction.response.send_message(f"✅ Ticket created: {channel.mention}\n\nHead over to the channel to proceed!", ephemeral=True)
