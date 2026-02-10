@@ -377,6 +377,15 @@ class MainPanel(View):
             )
             return
 
+        # ✅ CHECK IF USER ALREADY HAS A TICKET (THIS WAS IN WRONG PLACE)
+        existing = find_existing_ticket(interaction.guild, interaction.user.id)
+        if existing:
+            await interaction.response.send_message(
+                f"❌ You already have an open ticket: {existing.mention}",
+                ephemeral=True
+            )
+            return
+
         category = interaction.guild.get_channel(ticket_config["category"])
         if not category:
             await interaction.response.send_message("Configured category not found.", ephemeral=True)
@@ -393,9 +402,6 @@ class MainPanel(View):
 
         try:
             channel = await category.create_text_channel(channel_name, overwrites=overwrites)
-
-            test_msg = await channel.send("Testing permissions...")
-            await test_msg.delete()
 
             ticket_owners[channel.id] = interaction.user.id
 
@@ -422,6 +428,7 @@ class MainPanel(View):
                 "Failed to create ticket. Check bot permissions.",
                 ephemeral=True
             )
+
         # Test sending a simple message first to check permissions
         try:
             channel = await category.create_text_channel(channel_name, overwrites=overwrites)
@@ -438,14 +445,7 @@ class MainPanel(View):
                 color=discord.Color.blue(),
                 timestamp=discord.utils.utcnow()
             )
-existing = find_existing_ticket(interaction.guild, interaction.user.id)
 
-if existing:
-    await interaction.response.send_message(
-        f"❌ You already have an open ticket: {existing.mention}",
-        ephemeral=True
-    )
-    return
             await channel.send(embed=welcome_embed, view=TierTicketView())
             await channel.send("", view=TicketButtons())
 
