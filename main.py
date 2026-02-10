@@ -358,7 +358,7 @@ class MainPanel(View):
             ticket_embed = discord.Embed(
                 title="Staff Controls",
                 description="Use the buttons below to manage this ticket.\n\nRemember, every ticket is a step towards mastery!",
-                color=discord.Color.grey(),  # Fixed: Changed from grey() to gray()
+                color=discord.Color.red(),  # Fixed: Changed from grey() to gray()
                 timestamp=discord.utils.utcnow()
             )
             ticket_embed.set_footer(text="Staff panel", icon_url=client.user.avatar.url if client.user.avatar else None)
