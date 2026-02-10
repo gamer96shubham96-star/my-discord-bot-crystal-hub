@@ -4,6 +4,7 @@ import discord
 from discord import app_commands
 from discord.ui import View, Button, Select
 from dotenv import load_dotenv
+from discord import Color
 import logging
 import random  # For adding some "interesting" random elements, like quotes
 
