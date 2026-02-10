@@ -411,7 +411,7 @@ class MainPanel(View):
             )
 
             await channel.send(embed=welcome_embed, view=TierTicketView())
-            await channel.send("Staff Controls:", view=TicketButtons())
+            await channel.send("", view=TicketButtons())
 
             await interaction.response.send_message(
                 f"✅ Ticket created: {channel.mention}",
@@ -469,7 +469,7 @@ async def panel(interaction: discord.Interaction):
     gif_url = "https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif"  # Example: Replace with a real GIF URL like a fighting or gaming one
     
     embed = discord.Embed(
-        title="## 🎫 **TIER TEST PANEL** 🎫",
+        title="🎫 **TIER TEST PANEL** 🎫",
         description=crazy_text,
         color=discord.Color.purple(),  # Crazy color
         timestamp=discord.utils.utcnow()
