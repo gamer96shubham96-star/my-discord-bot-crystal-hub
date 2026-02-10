@@ -258,20 +258,41 @@ class ClaimButton(Button):
     def __init__(self):
         super().__init__(label="Claim", style=discord.ButtonStyle.blurple, custom_id="ticket_claim_btn")
 
-    async def callback(self, interaction: discord.Interaction):
-        if "staff_role" not in ticket_config or not interaction.user.get_role(ticket_config["staff_role"]):
-            await interaction.response.send_message("You do not have permission to claim this ticket.", ephemeral=True)
-            return
-        embed = discord.Embed(
-            title="✅ Ticket Claimed",
-            description=f"Claimed by: {interaction.user.mention}\n\n{random.choice(interesting_quotes)}",
-            color=discord.Color.blue(),
-            timestamp=discord.utils.utcnow()
-        )
-        embed.set_footer(text="Ticket claimed", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
-        await interaction.response.send_message(embed=embed)
+async def callback(self, interaction: discord.Interaction):
+    if "staff_role" not in ticket_config or not interaction.user.get_role(ticket_config["staff_role"]):
+        await interaction.response.send_message("You do not have permission to claim this ticket.", ephemeral=True)
+        return
 
-        logger.info(f"Ticket claimed by {interaction.user} in channel {interaction.channel.name}")
+    channel = interaction.channel
+    owner_id = ticket_owners.get(channel.id)
+
+    if not owner_id:
+        await interaction.response.send_message("Ticket owner not found.", ephemeral=True)
+        return
+
+    owner = interaction.guild.get_member(owner_id)
+    claimer = interaction.user
+    staff_role = interaction.guild.get_role(ticket_config["staff_role"])
+
+    # Rename channel
+    new_name = f"claimed-by-{claimer.name}".lower().replace(" ", "-")
+    await channel.edit(name=new_name)
+
+    # Remove staff role access
+    await channel.set_permissions(staff_role, overwrite=discord.PermissionOverwrite(view_channel=False))
+
+    # Ensure only owner + claimer can see
+    await channel.set_permissions(owner, overwrite=discord.PermissionOverwrite(view_channel=True, send_messages=True))
+    await channel.set_permissions(claimer, overwrite=discord.PermissionOverwrite(view_channel=True, send_messages=True))
+
+    # Disable the claim button after use
+    for item in self.view.children:
+        if isinstance(item, Button) and item.custom_id == "ticket_claim_btn":
+            item.disabled = True
+
+    await interaction.message.edit(view=self.view)
+
+    await interaction.response.send_message(f"✅ Ticket claimed by {claimer.mention}")
 
 class CloseButton(Button):
     def __init__(self):
@@ -310,7 +331,7 @@ class CloseButton(Button):
 
         logger.info(f"Ticket closed by {interaction.user} in channel {interaction.channel.name}")
 
-        await asyncio.sleep(5)
+        await asyncio.sleep(2)
         await interaction.channel.delete()
 
 class MainPanel(View):
@@ -361,15 +382,7 @@ class MainPanel(View):
             welcome_embed.set_footer(text="Ticket created", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
             await channel.send(embed=welcome_embed, view=TierTicketView())
 
-            ticket_embed = discord.Embed(
-                title="Staff Controls",
-                description="Use the buttons below to manage this ticket.\n\nRemember, every ticket is a step towards mastery!",
-                color=discord.Color.grey(),
-                timestamp=discord.utils.utcnow()
-            )
-            ticket_embed.set_footer(text="Staff panel", icon_url=client.user.avatar.url if client.user.avatar else None)
             await channel.send(embed=ticket_embed, view=TicketButtons())
-
             await interaction.response.send_message(f"✅ Ticket created: {channel.mention}\n\nHead over to the channel to proceed!", ephemeral=True)
 
             logger.info(f"Ticket created by {interaction.user}: Channel {channel_name}")
