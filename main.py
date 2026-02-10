@@ -28,11 +28,11 @@ user_selections: dict[tuple[int, int], dict] = {}  # Key: (user_id, channel_id),
 
 # List of interesting quotes for flair in tickets
 interesting_quotes = [
-    "Skill is not just about winning, it's about growth.",
-    "Every challenge is an opportunity to rise.",
-    "PvP is not a game, it's a battlefield of wits.",
-    "Tier up or step down – the choice is yours.",
-    "In the world of PvP, only the strong survive... or adapt."
+    "Shubham96 Is The Best Cpvp Tester!",
+    "qbhishekyt_11 is The Best Nethpot Tester!",
+    "Tier Is A Identity Of A Fighter!",
+    "Test Tier Wake Earlier!",
+    "Subscribe-https://www.youtube.com/@Shubham96Official"
 ]
 
 @client.event
@@ -377,7 +377,7 @@ class MainPanel(View):
 @tree.command(name="panel", description="Send ticket panel", guild=discord.Object(id=GUILD_ID))
 async def panel(interaction: discord.Interaction):
     # Crazy hype text for the description
-    crazy_text = "**🚀 Test Your Tier! 🚀**\n\n**CRYSTAL PVP,NETHPOT,SMP,SWORD ARE AVAILABLE,TEST NOW!**\n\n**💥 TEST & GET LOST 💥**\n\n**Select your region, choose your mode, and LET'S GET THIS PARTY STARTED!**\n\n**🔥 WARNING: DON'T WASTE STAFF TIME! 🔥**"
+    crazy_text = "**🚀 Test Your Tier! 🚀**\n\n**CRYSTAL PVP,NETHPOT,SMP,SWORD ARE AVAILABLE,TEST NOW!**\n\n**💥 TEST & Give Your Best! 💥**\n\n**Select your region, choose your mode, and LET'S GET THIS PARTY STARTED!**\n\n**🔥 WARNING: DON'T WASTE STAFF TIME! 🔥**"
     
     # Fun PvP/Gaming GIF URL (replace with a working one if needed)
     gif_url = "https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif"  # Example: Replace with a real GIF URL like a fighting or gaming one
