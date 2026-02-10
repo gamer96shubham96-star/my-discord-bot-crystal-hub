@@ -370,14 +370,11 @@ class MainPanel(View):
     @discord.ui.button(label="♛ Tier Test", style=discord.ButtonStyle.blurple, custom_id="panel_tier_btn")
     async def tier(self, interaction: discord.Interaction, button: Button):
 
-        if "category" not in ticket_config or "staff_role" not in ticket_config or "logs_channel" not in ticket_config:
-            await interaction.response.send_message(
-                "Ticket system is not fully configured.",
-                ephemeral=True
-            )
+        if "category" not in ticket_config:
+            await interaction.response.send_message("Ticket system not configured.", ephemeral=True)
             return
 
-        # ✅ CHECK IF USER ALREADY HAS A TICKET (THIS WAS IN WRONG PLACE)
+        # Prevent duplicate tickets
         existing = find_existing_ticket(interaction.guild, interaction.user.id)
         if existing:
             await interaction.response.send_message(
@@ -387,32 +384,31 @@ class MainPanel(View):
             return
 
         category = interaction.guild.get_channel(ticket_config["category"])
-        if not category:
-            await interaction.response.send_message("Configured category not found.", ephemeral=True)
-            return
-
-        channel_name = f"tier-test-{interaction.user.name}".lower().replace(" ", "-")
 
         overwrites = {
             interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
             interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
             interaction.guild.get_role(ticket_config["staff_role"]): discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            client.user: discord.PermissionOverwrite(read_messages=True, send_messages=True, embed_links=True, attach_files=True),
+            client.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
         }
 
         try:
-            channel = await category.create_text_channel(channel_name, overwrites=overwrites)
+            channel = await category.create_text_channel(
+                f"tier-test-{interaction.user.name}".lower().replace(" ", "-"),
+                overwrites=overwrites
+            )
 
             ticket_owners[channel.id] = interaction.user.id
 
-            welcome_embed = discord.Embed(
-                title="🎫 Welcome to Your Tier Test Ticket!",
-                description=f"Hello {interaction.user.mention}!\n\nPlease select your Region and Mode below and submit.\n\n{random.choice(interesting_quotes)}",
-                color=discord.Color.blue(),
-                timestamp=discord.utils.utcnow()
+            await channel.send(
+                embed=discord.Embed(
+                    title="🎫 Welcome to Your Tier Test Ticket!",
+                    description=f"{interaction.user.mention}, select region and mode below.",
+                    color=discord.Color.blue()
+                ),
+                view=TierTicketView()
             )
 
-            await channel.send(embed=welcome_embed, view=TierTicketView())
             await channel.send("Staff Controls:", view=TicketButtons())
 
             await interaction.response.send_message(
@@ -420,14 +416,13 @@ class MainPanel(View):
                 ephemeral=True
             )
 
-            logger.info(f"Ticket created by {interaction.user}: {channel.name}")
-
         except Exception as e:
-            logger.error(f"Error creating ticket: {e}")
+            logger.error(e)
             await interaction.response.send_message(
-                "Failed to create ticket. Check bot permissions.",
+                "Failed to create ticket.",
                 ephemeral=True
             )
+
 
         # Test sending a simple message first to check permissions
         try:
