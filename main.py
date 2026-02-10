@@ -350,19 +350,41 @@ class CloseButton(Button):
 
         except Exception as e:
             logger.error(f"Failed to create transcript: {e}")
+            
+        ticket_owners.pop(channel.id, None)
 
         await asyncio.sleep(2)
         await channel.delete()
+def find_existing_ticket(guild: discord.Guild, user_id: int) -> discord.TextChannel | None:
+    for channel_id, owner_id in ticket_owners.items():
+        if owner_id == user_id:
+            channel = guild.get_channel(channel_id)
+            if channel:  # still exists
+                return channel
+    return None
 
 class MainPanel(View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="♛ Tier Test", style=discord.ButtonStyle.blurple, custom_id="panel_tier_btn")
-    async def tier(self, interaction: discord.Interaction, button: Button):
-        if "category" not in ticket_config or "staff_role" not in ticket_config or "logs_channel" not in ticket_config:
-            await interaction.response.send_message("Ticket system is not fully configured. Please ask an admin to run `/setup_tickets` with category, staff role, and logs channel.", ephemeral=True)
-            return
+@discord.ui.button(label="♛ Tier Test", style=discord.ButtonStyle.blurple, custom_id="panel_tier_btn")
+async def tier(self, interaction: discord.Interaction, button: Button):
+
+    if "category" not in ticket_config or "staff_role" not in ticket_config or "logs_channel" not in ticket_config:
+        await interaction.response.send_message(
+            "Ticket system is not fully configured.",
+            ephemeral=True
+        )
+        return
+
+    # ✅ ONE TICKET CHECK
+    existing = find_existing_ticket(interaction.guild, interaction.user.id)
+    if existing:
+        await interaction.response.send_message(
+            f"❌ You already have an open ticket: {existing.mention}",
+            ephemeral=True
+        )
+        return
 
         category = interaction.guild.get_channel(ticket_config["category"])
         if not category:
@@ -399,7 +421,14 @@ class MainPanel(View):
                 color=discord.Color.blue(),
                 timestamp=discord.utils.utcnow()
             )
+existing = find_existing_ticket(interaction.guild, interaction.user.id)
 
+if existing:
+    await interaction.response.send_message(
+        f"❌ You already have an open ticket: {existing.mention}",
+        ephemeral=True
+    )
+    return
             await channel.send(embed=welcome_embed, view=TierTicketView())
             await channel.send("", view=TicketButtons())
 
@@ -426,13 +455,13 @@ async def panel(interaction: discord.Interaction):
     gif_url = "https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif"  # Example: Replace with a real GIF URL like a fighting or gaming one
     
     embed = discord.Embed(
-        title="🎫 **TIER TEST PANEL** 🎫",
+        title="## 🎫 **TIER TEST PANEL** 🎫",
         description=crazy_text,
         color=discord.Color.purple(),  # Crazy color
         timestamp=discord.utils.utcnow()
     )
     embed.set_image(url=gif_url)  # GIF as image
-    embed.set_footer(text="**Get ready to CLASH!**", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+    embed.set_footer(text="Test Your Tier ⤵︎", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
     
     await interaction.response.send_message(embed=embed, view=MainPanel())
 
