@@ -26,11 +26,11 @@ ticket_config: dict[str, int] = {}
 
 # List of interesting quotes for flair in tickets
 interesting_quotes = [
-    "Skill is not just about winning, it's about growth.",
-    "Every challenge is an opportunity to rise.",
-    "PvP is not a game, it's a battlefield of wits.",
-    "Tier up or step down – the choice is yours.",
-    "In the world of PvP, only the strong survive... or adapt."
+    "**Skill is not just about winning, it's about growth.**",
+    "**Every challenge is an opportunity to rise.**",
+    "**PvP is not a game, it's a battlefield of wits.**",
+    "**Tier up or step down – the choice is yours.**",
+    "**In the world of PvP, only the strong survive... or adapt.**"
 ]
 
 @client.event
@@ -47,7 +47,7 @@ async def on_ready():
     client.add_view(TicketButtons())
     client.add_view(TierTicketView())
 
-    logger.info(f"✅ Logged in as {client.user}")
+    logger.info(f"✅ **Logged in as {client.user}**")
 
 # -------------------- COMMANDS --------------------
 
@@ -97,34 +97,34 @@ async def tier(
     score: str,
     result: app_commands.Choice[str],
 ):
-    # Exact custom formatted result message as requested
+    # Exact custom formatted result message as requested, with enhanced markdown
     result_text = f"""|| @everyone ||
-## ⛨  {mode.value} Tier • OFFICIAL TIER RESULTS  ⛨
+## ⛨  **{mode.value} Tier • OFFICIAL TIER RESULTS**  ⛨
 
-### ⚚ Tester
+### ⚚ **Tester**
 {tester.mention}
-### ◈ Candidate
+### ◈ **Candidate**
 {user.mention}
-### :earth_africa: Region
+### :earth_africa: **Region**
 `{region.value}`
-### ⛨ Gamemode
+### ⛨ **Gamemode**
 `{mode.value}`
-### ⌬ Account Type
+### ⌬ **Account Type**
 `{account.value}`
 ------------------
-### ⬖ Previous Tier
+### ⬖ **Previous Tier**
 **{previous_tier}**
 ---
-### ⬗ Tier Achieved
+### ⬗ **Tier Achieved**
 **{earned_tier}**
 ---
-### ✦ Match Score
+### ✦ **Match Score**
 `{score}`
 ------------------
-## ⛨ RESULT: **{result.value}** ⛨
+## ⛨ **RESULT: {result.value}** ⛨
 
-### Think you can outperform this result?  
-Test again in 1 month!
+### *Think you can outperform this result?*  
+**Test again in 1 month!**
 
 [Blank space for GIF - You can add a GIF URL here or attach one below]"""
 
@@ -132,7 +132,7 @@ Test again in 1 month!
     await interaction.response.send_message(result_text)
 
     # Log the action
-    logger.info(f"Tier result posted by {interaction.user}: Tester {tester}, User {user}, Result {result.value}")
+    logger.info(f"**Tier result posted by {interaction.user}**: Tester {tester}, User {user}, Result {result.value}")
 
 @tree.command(name="setup_tickets", description="Setup ticket system", guild=discord.Object(id=GUILD_ID))
 @app_commands.checks.has_permissions(administrator=True)
@@ -146,16 +146,16 @@ async def setup_tickets(
     ticket_config["staff_role"] = staff_role.id
     ticket_config["logs_channel"] = logs_channel.id
     embed = discord.Embed(
-        title="✅ Ticket System Configured",
-        description=f"Category: {category.mention}\nStaff Role: {staff_role.mention}\nLogs Channel: {logs_channel.mention}",
+        title="✅ **Ticket System Configured**",
+        description=f"**Category:** {category.mention}\n**Staff Role:** {staff_role.mention}\n**Logs Channel:** {logs_channel.mention}",
         color=discord.Color.green(),
         timestamp=discord.utils.utcnow()
     )
-    embed.set_footer(text="Configuration completed", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+    embed.set_footer(text="*Configuration completed*", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
     # Log the setup
-    logger.info(f"Ticket system configured by {interaction.user}: Category {category.name}, Staff Role {staff_role.name}, Logs Channel {logs_channel.name}")
+    logger.info(f"**Ticket system configured by {interaction.user}**: Category {category.name}, Staff Role {staff_role.name}, Logs Channel {logs_channel.name}")
 
 # -------------------- PERSISTENT COMPONENTS --------------------
 
@@ -168,18 +168,16 @@ class RegionSelect(Select):
             discord.SelectOption(label="South America", value="South America"),
         ]
         super().__init__(
-            placeholder="Select Region",
+            placeholder="**Select Region**",
             options=options,
             custom_id="tier_region_select"
         )
 
     async def callback(self, interaction: discord.Interaction):
-        # Store the selection in the interaction's custom data or a temp store
-        # For simplicity, we'll use a dict keyed by user/channel
         if not hasattr(interaction, 'temp_data'):
             interaction.temp_data = {}
         interaction.temp_data['region'] = self.values[0]
-        await interaction.response.defer()  # Acknowledge without message
+        await interaction.response.defer()
 
 class ModeSelect(Select):
     def __init__(self):
@@ -190,7 +188,7 @@ class ModeSelect(Select):
             discord.SelectOption(label="Sword", value="Sword"),
         ]
         super().__init__(
-            placeholder="Select Mode",
+            placeholder="**Select Mode**",
             options=options,
             custom_id="tier_mode_select"
         )
@@ -207,114 +205,120 @@ class TierTicketView(View):
         self.add_item(RegionSelect())
         self.add_item(ModeSelect())
 
-    @discord.ui.button(label="Submit Request", style=discord.ButtonStyle.green, custom_id="tier_submit_btn")
+    @discord.ui.button(label="**Submit Request**", style=discord.ButtonStyle.green, custom_id="tier_submit_btn")
     async def submit(self, interaction: discord.Interaction, button: Button):
-        # Check if selections are made
         region = getattr(interaction, 'temp_data', {}).get('region')
         mode = getattr(interaction, 'temp_data', {}).get('mode')
         if not region or not mode:
-            await interaction.response.send_message("Please select both Region and Mode before submitting.", ephemeral=True)
+            await interaction.response.send_message("*Please select both Region and Mode before submitting.*", ephemeral=True)
             return
 
-        # Send a message to the channel with the request details
         embed = discord.Embed(
-            title="🎫 Tier Test Request Submitted",
-            description=f"**Requester:** {interaction.user.mention}\n**Region:** {region}\n**Mode:** {mode}\n\n*{random.choice(interesting_quotes)}*",
+            title="🎫 **Tier Test Request Submitted**",
+            description=f"**Requester:** {interaction.user.mention}\n**Region:** {region}\n**Mode:** {mode}\n\n{random.choice(interesting_quotes)}",
             color=discord.Color.orange(),
             timestamp=discord.utils.utcnow()
         )
-        embed.set_footer(text="Request submitted", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+        embed.set_footer(text="*Request submitted*", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
         await interaction.response.send_message(embed=embed)
 
-        # Log the submission
-        logger.info(f"Tier test request submitted by {interaction.user}: Region {region}, Mode {mode}")
+        # Disable the view after submission to prevent further changes
+        self.clear_items()
+        await interaction.message.edit(view=self)
 
-        # Optionally, notify staff (if staff_role is set)
+        logger.info(f"**Tier test request submitted by {interaction.user}**: Region {region}, Mode {mode}")
+
         if "staff_role" in ticket_config:
             staff_role = interaction.guild.get_role(ticket_config["staff_role"])
             if staff_role:
-                await interaction.followup.send(f"{staff_role.mention}, a new tier test request has been submitted!", ephemeral=True)
+                await interaction.followup.send(f"{staff_role.mention}, *a new tier test request has been submitted!*", ephemeral=True)
 
 class TicketButtons(View):
-    def __init__(self):
+    def __init__(self, claimed=False):
         super().__init__(timeout=None)
+        if not claimed:
+            self.add_item(ClaimButton())
+        else:
+            self.add_item(CloseButton())
 
-    @discord.ui.button(label="Claim", style=discord.ButtonStyle.blurple, custom_id="ticket_claim_btn")
-    async def claim(self, interaction: discord.Interaction, button: Button):
-        # Check if user has staff role
+class ClaimButton(Button):
+    def __init__(self):
+        super().__init__(label="**Claim**", style=discord.ButtonStyle.blurple, custom_id="ticket_claim_btn")
+
+    async def callback(self, interaction: discord.Interaction):
         if "staff_role" not in ticket_config or not interaction.user.get_role(ticket_config["staff_role"]):
-            await interaction.response.send_message("You do not have permission to claim this ticket.", ephemeral=True)
+            await interaction.response.send_message("*You do not have permission to claim this ticket.*", ephemeral=True)
             return
         embed = discord.Embed(
-            title="✅ Ticket Claimed",
-            description=f"Claimed by {interaction.user.mention}\n\n*{random.choice(interesting_quotes)}*",
+            title="✅ **Ticket Claimed**",
+            description=f"**Claimed by:** {interaction.user.mention}\n\n{random.choice(interesting_quotes)}",
             color=discord.Color.blue(),
             timestamp=discord.utils.utcnow()
         )
-        embed.set_footer(text="Ticket claimed", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+        embed.set_footer(text="*Ticket claimed*", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
         await interaction.response.send_message(embed=embed)
 
-        # Log the claim
-        logger.info(f"Ticket claimed by {interaction.user} in channel {interaction.channel.name}")
+        # Update the view to show Close button
+        new_view = TicketButtons(claimed=True)
+        await interaction.message.edit(view=new_view)
 
-    @discord.ui.button(label="Close", style=discord.ButtonStyle.red, custom_id="ticket_close_btn")
-    async def close(self, interaction: discord.Interaction, button: Button):
-        # Check permissions
+        logger.info(f"**Ticket claimed by {interaction.user}** in channel {interaction.channel.name}")
+
+class CloseButton(Button):
+    def __init__(self):
+        super().__init__(label="**Close**", style=discord.ButtonStyle.red, custom_id="ticket_close_btn")
+
+    async def callback(self, interaction: discord.Interaction):
         if "staff_role" not in ticket_config or not interaction.user.get_role(ticket_config["staff_role"]):
-            await interaction.response.send_message("You do not have permission to close this ticket.", ephemeral=True)
+            await interaction.response.send_message("*You do not have permission to close this ticket.*", ephemeral=True)
             return
 
-        # Generate transcript
         logs_channel = interaction.guild.get_channel(ticket_config.get("logs_channel"))
         if logs_channel:
-            # Fetch all messages in the channel
             messages = []
             async for message in interaction.channel.history(limit=None, oldest_first=True):
-                messages.append(f"[{message.created_at.strftime('%Y-%m-%d %H:%M:%S')}] {message.author}: {message.content}")
+                content = message.content or "[Embed/Attachment]"
+                messages.append(f"[{message.created_at.strftime('%Y-%m-%d %H:%M:%S')}] {message.author}: {content}")
             transcript = "\n".join(messages)
 
-            # Send transcript to logs channel
             embed = discord.Embed(
-                title=f"📜 Ticket Transcript - {interaction.channel.name}",
-                description=f"Closed by {interaction.user.mention}\n\n**Transcript:**\n```\n{transcript[:4000]}\n```",  # Limit to 4000 chars for embed
+                title=f"📜 **Ticket Transcript - {interaction.channel.name}**",
+                description=f"**Closed by:** {interaction.user.mention}\n\n**Transcript:**\n```\n{transcript[:4000]}\n```",
                 color=discord.Color.red(),
                 timestamp=discord.utils.utcnow()
             )
-            embed.set_footer(text="Transcript logged", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+            embed.set_footer(text="*Transcript logged*", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
             await logs_channel.send(embed=embed)
 
         embed = discord.Embed(
-            title="🔒 Ticket Closed",
-            description=f"Closed by {interaction.user.mention}\n\n*{random.choice(interesting_quotes)}*",
+            title="🔒 **Ticket Closed**",
+            description=f"**Closed by:** {interaction.user.mention}\n\n{random.choice(interesting_quotes)}",
             color=discord.Color.red(),
             timestamp=discord.utils.utcnow()
         )
-        embed.set_footer(text="Ticket closed", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+        embed.set_footer(text="*Ticket closed*", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
         await interaction.response.send_message(embed=embed)
 
-        # Log the close
-        logger.info(f"Ticket closed by {interaction.user} in channel {interaction.channel.name}")
+        logger.info(f"**Ticket closed by {interaction.user}** in channel {interaction.channel.name}")
 
-        await asyncio.sleep(5)  # Give time to read
+        await asyncio.sleep(5)
         await interaction.channel.delete()
 
 class MainPanel(View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="♛ Tier Test", style=discord.ButtonStyle.blurple, custom_id="panel_tier_btn")
+    @discord.ui.button(label="♛ **Tier Test**", style=discord.ButtonStyle.blurple, custom_id="panel_tier_btn")
     async def tier(self, interaction: discord.Interaction, button: Button):
-        # Check if ticket system is configured
         if "category" not in ticket_config or "staff_role" not in ticket_config or "logs_channel" not in ticket_config:
-            await interaction.response.send_message("Ticket system is not fully configured. Please ask an admin to run `/setup_tickets` with category, staff role, and logs channel.", ephemeral=True)
+            await interaction.response.send_message("*Ticket system is not fully configured. Please ask an admin to run `/setup_tickets` with category, staff role, and logs channel.*", ephemeral=True)
             return
 
         category = interaction.guild.get_channel(ticket_config["category"])
         if not category:
-            await interaction.response.send_message("Configured category not found.", ephemeral=True)
+            await interaction.response.send_message("*Configured category not found.*", ephemeral=True)
             return
 
-        # Create a ticket channel
         channel_name = f"tier-test-{interaction.user.name}"
         overwrites = {
             interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
@@ -323,40 +327,37 @@ class MainPanel(View):
         }
         channel = await category.create_text_channel(channel_name, overwrites=overwrites)
 
-        # Send a welcome message with interesting quote
         welcome_embed = discord.Embed(
-            title="🎫 Welcome to Your Tier Test Ticket!",
-            description=f"Hello {interaction.user.mention}! We're excited to help you with your tier test.\n\n*{random.choice(interesting_quotes)}*\n\nPlease select your Region and Mode below, then submit your request.",
+            title="🎫 **Welcome to Your Tier Test Ticket!**",
+            description=f"Hello {interaction.user.mention}! *We're excited to help you with your tier test.*\n\n{random.choice(interesting_quotes)}\n\n**Please select your Region and Mode below, then submit your request.**\n\n*Note: Selections are one-time only after submission.*",
             color=discord.Color.blue(),
             timestamp=discord.utils.utcnow()
         )
-        welcome_embed.set_footer(text="Ticket created", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+        welcome_embed.set_footer(text="*Ticket created*", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
         await channel.send(embed=welcome_embed, view=TierTicketView())
 
-        # Send ticket buttons for staff
         ticket_embed = discord.Embed(
-            title="Staff Controls",
-            description="Use the buttons below to manage this ticket.\n\n*Remember, every ticket is a step towards mastery!*",
+            title="**Staff Controls**",
+            description="*Use the button below to manage this ticket.*\n\n*Remember, every ticket is a step towards mastery!*",
             color=discord.Color.grey(),
             timestamp=discord.utils.utcnow()
         )
-        ticket_embed.set_footer(text="Staff panel", icon_url=client.user.avatar.url if client.user.avatar else None)
+        ticket_embed.set_footer(text="*Staff panel*", icon_url=client.user.avatar.url if client.user.avatar else None)
         await channel.send(embed=ticket_embed, view=TicketButtons())
 
-        await interaction.response.send_message(f"✅ Ticket created: {channel.mention}", ephemeral=True)
+        await interaction.response.send_message(f"✅ **Ticket created:** {channel.mention}\n\n*Head over to the channel to proceed!*", ephemeral=True)
 
-        # Log the ticket creation
-        logger.info(f"Ticket created by {interaction.user}: Channel {channel_name}")
+        logger.info(f"**Ticket created by {interaction.user}**: Channel {channel_name}")
 
 @tree.command(name="panel", description="Send ticket panel", guild=discord.Object(id=GUILD_ID))
 async def panel(interaction: discord.Interaction):
     embed = discord.Embed(
-        title="🎫 Ticket Panel",
-        description="Click the button below to create a tier test ticket.\n\n*Ready to prove your skills? Let's begin!*",
+        title="🎫 **Ticket Panel**",
+        description="*Click the button below to create a tier test ticket.*\n\n*Ready to prove your skills? Let's begin!*",
         color=discord.Color.green(),
         timestamp=discord.utils.utcnow()
     )
-    embed.set_footer(text="Panel sent", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+    embed.set_footer(text="*Panel sent*", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
     await interaction.response.send_message(embed=embed, view=MainPanel())
 
 if __name__ == "__main__":
