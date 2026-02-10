@@ -127,7 +127,7 @@ async def tier(
 ### Think you can outperform this result?  
 Test again in 1 month!
 
-[https://giphy.com/gifs/intresting-MScmyZctK91GfATYob]"""
+[]"""
 
     # Send the formatted message
     await interaction.response.send_message(result_text)
@@ -325,7 +325,7 @@ class MainPanel(View):
             interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
             interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
             interaction.guild.get_role(ticket_config["staff_role"]): discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            client.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),  # Ensure bot can send messages
+            client.user: discord.PermissionOverwrite(read_messages=True, send_messages=True, embed_links=True, attach_files=True),  # Added more permissions for embeds
         }
         try:
             channel = await category.create_text_channel(channel_name, overwrites=overwrites)
@@ -358,8 +358,8 @@ class MainPanel(View):
             logger.info(f"Ticket created by {interaction.user}: Channel {channel_name}")
         except Exception as e:
             logger.error(f"Error sending messages to ticket channel: {e}")
-            await channel.delete()  # Clean up if sending fails
-            await interaction.response.send_message("Failed to set up ticket. Please try again.", ephemeral=True)
+            # Removed channel.delete() to prevent auto-deletion; channel stays for manual inspection/debugging
+            await interaction.response.send_message("Ticket channel created, but setup failed. Check the channel for issues.", ephemeral=True)
 
 @tree.command(name="panel", description="Send ticket panel", guild=discord.Object(id=GUILD_ID))
 async def panel(interaction: discord.Interaction):
