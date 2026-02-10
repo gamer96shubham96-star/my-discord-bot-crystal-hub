@@ -241,12 +241,10 @@ class TierTicketView(View):
                 await interaction.followup.send(f"{staff_role.mention}, a new tier test request has been submitted!", ephemeral=True)
 
 class TicketButtons(View):
-    def __init__(self, claimed=False):
+    def __init__(self):
         super().__init__(timeout=None)
-        if not claimed:
-            self.add_item(ClaimButton())
-        else:
-            self.add_item(CloseButton())
+        self.add_item(ClaimButton())
+        self.add_item(CloseButton())
 
 class ClaimButton(Button):
     def __init__(self):
@@ -265,15 +263,11 @@ class ClaimButton(Button):
         embed.set_footer(text="Ticket claimed", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
         await interaction.response.send_message(embed=embed)
 
-        # Update the view to show Close button
-        new_view = TicketButtons(claimed=True)
-        await interaction.message.edit(view=new_view)
-
         logger.info(f"Ticket claimed by {interaction.user} in channel {interaction.channel.name}")
 
 class CloseButton(Button):
     def __init__(self):
-        super().__init__(label="Close", style=discord.ButtonStyle.red, custom_id="ticket_close_btn")
+        super().__init__(label="Close Ticket", style=discord.ButtonStyle.red, custom_id="ticket_close_btn")
 
     async def callback(self, interaction: discord.Interaction):
         if "staff_role" not in ticket_config or not interaction.user.get_role(ticket_config["staff_role"]):
@@ -326,15 +320,15 @@ class MainPanel(View):
             await interaction.response.send_message("Configured category not found.", ephemeral=True)
             return
 
-        try:
-            channel_name = f"tier-test-{interaction.user.name}"
-            overwrites = {
-                interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
-                interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-                interaction.guild.get_role(ticket_config["staff_role"]): discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            }
-            channel = await category.create_text_channel(channel_name, overwrites=overwrites)
+        channel_name = f"tier-test-{interaction.user.name}"
+        overwrites = {
+            interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
+            interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+            interaction.guild.get_role(ticket_config["staff_role"]): discord.PermissionOverwrite(read_messages=True, send_messages=True),
+        }
+        channel = await category.create_text_channel(channel_name, overwrites=overwrites)
 
+        try:
             welcome_embed = discord.Embed(
                 title="🎫 Welcome to Your Tier Test Ticket!",
                 description=f"Hello {interaction.user.mention}! We're excited to help you with your tier test.\n\n{random.choice(interesting_quotes)}\n\nPlease select your Region and Mode below, then submit your request.\n\nNote: Selections are one-time only after submission.",
@@ -346,7 +340,7 @@ class MainPanel(View):
 
             ticket_embed = discord.Embed(
                 title="Staff Controls",
-                description="Use the button below to manage this ticket.\n\nRemember, every ticket is a step towards mastery!",
+                description="Use the buttons below to manage this ticket.\n\nRemember, every ticket is a step towards mastery!",
                 color=discord.Color.grey(),
                 timestamp=discord.utils.utcnow()
             )
@@ -357,8 +351,9 @@ class MainPanel(View):
 
             logger.info(f"Ticket created by {interaction.user}: Channel {channel_name}")
         except Exception as e:
-            logger.error(f"Error creating ticket: {e}")
-            await interaction.response.send_message("An error occurred while creating the ticket. Please try again or contact an admin.", ephemeral=True)
+            logger.error(f"Error sending messages to ticket channel: {e}")
+            await channel.delete()  # Delete the channel if sending messages fails
+            await interaction.response.send_message("An error occurred while setting up the ticket. Please try again or contact an admin.", ephemeral=True)
 
 @tree.command(name="panel", description="Send ticket panel", guild=discord.Object(id=GUILD_ID))
 async def panel(interaction: discord.Interaction):
