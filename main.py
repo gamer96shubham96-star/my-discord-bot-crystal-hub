@@ -24,8 +24,9 @@ ticket_config: dict[str, int] = {}
 async def on_ready():
     guild = discord.Object(id=GUILD_ID)
 
+    await tree.sync()  # register globally first time
     tree.copy_global_to(guild=guild)
-    await tree.sync(guild=guild)
+    await tree.sync(guild=guild)  # instant guild sync
 
     client.add_view(MainPanel())
     client.add_view(TicketButtons())
