@@ -101,7 +101,7 @@ async def tier(
 ):
     # Exact custom formatted result message as requested, with enhanced markdown
     result_text = f"""|| @everyone ||
-## ⛨  Crystal Hub {mode.value} Tier • OFFICIAL TIER RESULTS  ⛨
+## ⛨  Crystal Hub {mode.value} Tier • TIER RESULTS  ⛨
 
 ### ⚚ Tester
 {tester.mention}
