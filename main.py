@@ -192,7 +192,7 @@ class ModeSelect(Select):
             discord.SelectOption(label="Sword", value="Sword"),
         ]
         super().__init__(
-            placeholder="Select Mode",
+            placeholder="Select GameMode",
             options=options,
             custom_id="tier_mode_select"
         )
