@@ -327,29 +327,39 @@ class MainPanel(View):
             interaction.guild.get_role(ticket_config["staff_role"]): discord.PermissionOverwrite(read_messages=True, send_messages=True),
             client.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),  # Ensure bot can send messages
         }
-        channel = await category.create_text_channel(channel_name, overwrites=overwrites)
+        try:
+            channel = await category.create_text_channel(channel_name, overwrites=overwrites)
+        except Exception as e:
+            logger.error(f"Error creating ticket channel: {e}")
+            await interaction.response.send_message("Failed to create ticket channel. Check permissions or try again.", ephemeral=True)
+            return
 
-        welcome_embed = discord.Embed(
-            title="🎫 Welcome to Your Tier Test Ticket!",
-            description=f"Hello {interaction.user.mention}! We're excited to help you with your tier test.\n\n{random.choice(interesting_quotes)}\n\nPlease select your Region and Mode below, then submit your request.\n\nNote: Selections are one-time only after submission.",
-            color=discord.Color.blue(),
-            timestamp=discord.utils.utcnow()
-        )
-        welcome_embed.set_footer(text="Ticket created", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
-        await channel.send(embed=welcome_embed, view=TierTicketView())
+        try:
+            welcome_embed = discord.Embed(
+                title="🎫 Welcome to Your Tier Test Ticket!",
+                description=f"Hello {interaction.user.mention}! We're excited to help you with your tier test.\n\n{random.choice(interesting_quotes)}\n\nPlease select your Region and Mode below, then submit your request.\n\nNote: Selections are one-time only after submission.",
+                color=discord.Color.blue(),
+                timestamp=discord.utils.utcnow()
+            )
+            welcome_embed.set_footer(text="Ticket created", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+            await channel.send(embed=welcome_embed, view=TierTicketView())
 
-        ticket_embed = discord.Embed(
-            title="Staff Controls",
-            description="Use the buttons below to manage this ticket.\n\nRemember, every ticket is a step towards mastery!",
-            color=discord.Color.grey(),
-            timestamp=discord.utils.utcnow()
-        )
-        ticket_embed.set_footer(text="Staff panel", icon_url=client.user.avatar.url if client.user.avatar else None)
-        await channel.send(embed=ticket_embed, view=TicketButtons())
+            ticket_embed = discord.Embed(
+                title="Staff Controls",
+                description="Use the buttons below to manage this ticket.\n\nRemember, every ticket is a step towards mastery!",
+                color=discord.Color.grey(),
+                timestamp=discord.utils.utcnow()
+            )
+            ticket_embed.set_footer(text="Staff panel", icon_url=client.user.avatar.url if client.user.avatar else None)
+            await channel.send(embed=ticket_embed, view=TicketButtons())
 
-        await interaction.response.send_message(f"✅ Ticket created: {channel.mention}\n\nHead over to the channel to proceed!", ephemeral=True)
+            await interaction.response.send_message(f"✅ Ticket created: {channel.mention}\n\nHead over to the channel to proceed!", ephemeral=True)
 
-        logger.info(f"Ticket created by {interaction.user}: Channel {channel_name}")
+            logger.info(f"Ticket created by {interaction.user}: Channel {channel_name}")
+        except Exception as e:
+            logger.error(f"Error sending messages to ticket channel: {e}")
+            await channel.delete()  # Clean up if sending fails
+            await interaction.response.send_message("Failed to set up ticket. Please try again.", ephemeral=True)
 
 @tree.command(name="panel", description="Send ticket panel", guild=discord.Object(id=GUILD_ID))
 async def panel(interaction: discord.Interaction):
@@ -363,4 +373,12 @@ async def panel(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed, view=MainPanel())
 
 if __name__ == "__main__":
-    client.run(TOKEN)
+    try:
+        client.run(TOKEN)
+    except discord.HTTPException as e:
+        if e.status == 429:
+            logger.error("Rate limit hit. Waiting before retry...")
+            asyncio.run(asyncio.sleep(60))  # Wait 60 seconds before retrying
+            client.run(TOKEN)
+        else:
+            raise
