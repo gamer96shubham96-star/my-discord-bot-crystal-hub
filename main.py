@@ -334,6 +334,15 @@ class MainPanel(View):
             await interaction.response.send_message("Failed to create ticket channel. Check permissions or try again.", ephemeral=True)
             return
 
+        # Test sending a simple message first to check permissions
+        try:
+            test_msg = await channel.send("Testing permissions...")
+            await test_msg.delete()  # Delete test message
+        except Exception as e:
+            logger.error(f"Bot cannot send messages in ticket channel: {e}")
+            await interaction.response.send_message("Ticket channel created, but bot lacks send permissions. Check bot roles.", ephemeral=True)
+            return
+
         try:
             welcome_embed = discord.Embed(
                 title="🎫 Welcome to Your Tier Test Ticket!",
@@ -357,19 +366,26 @@ class MainPanel(View):
 
             logger.info(f"Ticket created by {interaction.user}: Channel {channel_name}")
         except Exception as e:
-            logger.error(f"Error sending messages to ticket channel: {e}")
-            # Removed channel.delete() to prevent auto-deletion; channel stays for manual inspection/debugging
+            logger.error(f"Error sending embeds/views to ticket channel: {e}")
             await interaction.response.send_message("Ticket channel created, but setup failed. Check the channel for issues.", ephemeral=True)
 
 @tree.command(name="panel", description="Send ticket panel", guild=discord.Object(id=GUILD_ID))
 async def panel(interaction: discord.Interaction):
+    # Crazy hype text for the description
+    crazy_text = "**🚀 BLAST OFF INTO EPIC TIER TESTS! 🚀**\n\n**Are you ready to DOMINATE the leaderboards? Prove your SKILLS in the ultimate PvP showdown!**\n\n**💥 Unleash your inner WARRIOR! 💥**\n\n**Select your region, choose your mode, and LET'S GET THIS PARTY STARTED!**\n\n**🔥 WARNING: Only the STRONG survive! 🔥**"
+    
+    # Fun PvP/Gaming GIF URL (replace with a working one if needed)
+    gif_url = "https://media.giphy.com/media/3o7TKz9bX9Z9Z9Z9Z9/giphy.gif"  # Example: Replace with a real GIF URL like a fighting or gaming one
+    
     embed = discord.Embed(
-        title="🎫 Ticket Panel",
-        description="Click the button below to create a tier test ticket.\n\nReady to prove your skills? Let's begin!",
-        color=discord.Color.green(),
+        title="🎫 **ULTIMATE TIER TEST PANEL** 🎫",
+        description=crazy_text,
+        color=discord.Color.purple(),  # Crazy color
         timestamp=discord.utils.utcnow()
     )
-    embed.set_footer(text="Panel sent", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+    embed.set_image(url=gif_url)  # GIF as image
+    embed.set_footer(text="**Get ready to CLASH!**", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+    
     await interaction.response.send_message(embed=embed, view=MainPanel())
 
 if __name__ == "__main__":
