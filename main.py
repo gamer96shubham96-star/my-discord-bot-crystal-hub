@@ -48,8 +48,6 @@ async def on_ready():
     client.add_view(MainPanel())
     client.add_view(TicketButtons())
     client.add_view(TierTicketView())
-    client.add_view(CloseButton())
-    client.add_view(ClaimButton())
 
     logger.info(f"✅ Logged in as {client.user}")
 
