@@ -50,6 +50,8 @@ async def on_ready():
     # Add persistent views to handle interactions even after restart
     client.add_view(MainPanel())
     client.add_view(TierTicketView())
+    client.add_view(ApplyPanel())
+    client.add_view(ApplyButtons())
 
     asyncio.create_task(auto_close_task())
 
@@ -394,7 +396,77 @@ def find_existing_ticket(guild: discord.Guild, user_id: int) -> discord.TextChan
             if channel:  # still exists
                 return channel
     return None
+# -------------------- APPLY SYSTEM --------------------
 
+apply_owners: dict[int, int] = {}  # channel_id -> user_id
+
+
+class ApplyQuestions(discord.ui.Modal, title="Tester Application"):
+    name = discord.ui.TextInput(label="Your Name", required=True)
+    age = discord.ui.TextInput(label="Your Age", required=True)
+    experience = discord.ui.TextInput(label="PvP Experience", style=discord.TextStyle.paragraph, required=True)
+    why = discord.ui.TextInput(label="Why should we select you?", style=discord.TextStyle.paragraph, required=True)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        channel = interaction.channel
+
+        embed = discord.Embed(
+            title="📝 New Tester Application",
+            color=discord.Color.blurple(),
+            timestamp=discord.utils.utcnow()
+        )
+        embed.add_field(name="Name", value=self.name.value, inline=False)
+        embed.add_field(name="Age", value=self.age.value, inline=False)
+        embed.add_field(name="Experience", value=self.experience.value, inline=False)
+        embed.add_field(name="Why Select You", value=self.why.value, inline=False)
+        embed.set_footer(text=f"Applicant: {interaction.user}", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+
+        await channel.send(embed=embed, view=ApplyButtons())
+        await interaction.response.send_message("✅ Application submitted!", ephemeral=True)
+
+
+class ApplyButtons(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="Accept", style=discord.ButtonStyle.green)
+    async def accept(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.send_message("✅ Application Accepted")
+        await interaction.channel.edit(name="accepted-application")
+
+    @discord.ui.button(label="Reject", style=discord.ButtonStyle.red)
+    async def reject(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.send_message("❌ Application Rejected")
+        await interaction.channel.edit(name="rejected-application")
+
+
+class ApplyPanel(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="📝 Apply for Tester", style=discord.ButtonStyle.green, custom_id="apply_btn")
+    async def apply(self, interaction: discord.Interaction, button: Button):
+
+        category = interaction.guild.get_channel(ticket_config["category"])
+        staff_role = interaction.guild.get_role(ticket_config["staff_role"])
+
+        overwrites = {
+            interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
+            interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+            staff_role: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+            client.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+        }
+
+        channel = await category.create_text_channel(
+            f"apply-{interaction.user.name}".lower().replace(" ", "-"),
+            overwrites=overwrites
+        )
+
+        apply_owners[channel.id] = interaction.user.id
+
+        await channel.send(f"{interaction.user.mention} please fill the application form below.")
+        await interaction.response.send_modal(ApplyQuestions())
+ #--------------------------------------------------------------------------------
 class MainPanel(View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -463,6 +535,14 @@ class MainPanel(View):
                 "Failed to create ticket.",
                 ephemeral=True
             )
+@tree.command(name="applypanel", description="Send apply panel", guild=discord.Object(id=GUILD_ID))
+async def applypanel(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="📝 Tester Application Panel",
+        description="Want to become a Tester? Click below and apply!",
+        color=discord.Color.green()
+    )
+    await interaction.response.send_message(embed=embed, view=ApplyPanel())
 
 
 @tree.command(name="panel", description="Send ticket panel", guild=discord.Object(id=GUILD_ID))
