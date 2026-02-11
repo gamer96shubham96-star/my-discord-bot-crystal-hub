@@ -298,22 +298,23 @@ async def on_message(message):
                 color=discord.Color.blue(),
                 timestamp=discord.utils.utcnow()
             )
-
-            embed.add_field(name="Username (MC + Discord)", value=answers[0], inline=False)
-            embed.add_field(name="Age", value=answers[1], inline=False)
-            embed.add_field(name="Region / Timezone", value=answers[2], inline=False)
-            embed.add_field(name="Gamemodes You Can Test", value=answers[3], inline=False)
-            embed.add_field(name="Daily Activity Hours", value=answers[4], inline=False)
-            embed.add_field(name="PvP Experience Duration", value=answers[5], inline=False)
-            embed.add_field(name="PvP Skill Rating", value=answers[6], inline=False)
-            embed.add_field(name="Previous Staff Experience", value=answers[7], inline=False)
-            embed.add_field(name="Why You Want To Be Tester", value=answers[8], inline=False)
-            embed.add_field(name="What Makes You Different", value=answers[9], inline=False)
-            embed.add_field(name="Handling Toxic Players", value=answers[10], inline=False)
-            embed.add_field(name="Handling Tier Accusations", value=answers[11], inline=False)
-            embed.add_field(name="Can You Record Tests?", value=answers[12], inline=False)
-            embed.add_field(name="Understands Abuse = Removal", value=answers[13], inline=False)
-            embed.add_field(name="Additional Information", value=answers[14], inline=False)
+questions = [
+    "Username (Minecraft + Discord):",
+    "Age:",
+    "Region / Timezone:",
+    "Gamemodes you can test? (Crystal, NethPot, SMP, Sword):",
+    "How many hours can you be active daily?:",
+    "How long have you been doing PvP?:",
+    "Rate your PvP skill out of 10:",
+    "Do you have previous staff experience? If yes, where?:",
+    "Why do you want to become a tester?:",
+    "What makes you different from other applicants?:",
+    "How would you handle toxic players during a test?:",
+    "How would you handle players accusing you of wrong tiering?:",
+    "Can you record your tests? (Yes/No):",
+    "Do you understand that abusing tester power leads to instant removal? (Yes/No):",
+    "Any additional information you want to share?:"
+]
 
             embed.set_footer(
                 text=f"Applicant ID: {user_id}",
