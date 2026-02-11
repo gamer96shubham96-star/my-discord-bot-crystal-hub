@@ -446,4 +446,10 @@ async def applications(interaction: discord.Interaction):
         return
 
     application_states[user_id] = {'step': 0, 'answers': []}
-    await interaction.response.send_message(f"**Question 1:** {questions[0]}")
+
+    await interaction.response.send_message("📩 Check your DMs to start the application!", ephemeral=True)
+
+    try:
+        await interaction.user.send(f"**Question 1:** {questions[0]}")
+    except:
+        await interaction.followup.send("I cannot DM you. Please enable DMs from server members.", ephemeral=True)
