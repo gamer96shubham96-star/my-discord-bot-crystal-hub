@@ -108,29 +108,43 @@ async def auto_close_task():
         await asyncio.sleep(60)
         now = discord.utils.utcnow().timestamp()
         to_close = [cid for cid, ts in last_activity.items() if now - ts > 1200]
+
         for cid in to_close:
             channel = client.get_channel(cid)
-            if channel:
-logs_id = ticket_config.get("logs_channel")
-if not logs_id:
-    continue
-logs_channel = client.get_channel(logs_id)
-                try:
-                    transcript_text = await generate_transcript(channel)
-                    transcript_file = discord.File(fp=io.StringIO(transcript_text), filename=f"transcript-{channel.name}.txt")
-                    owner_id = ticket_owners.get(cid, "Unknown")
-                    embed = discord.Embed(
-                        title="📝 Ticket Transcript",
-                        description=f"**Channel:** {channel.name}\n**Closed by:** Auto-close (inactive)\n**Owner ID:** {owner_id}",
-                        color=discord.Color.red(),
-                        timestamp=discord.utils.utcnow()
-                    )
+            if not channel:
+                continue
+
+            logs_id = ticket_config.get("logs_channel")
+            if not logs_id:
+                continue
+
+            logs_channel = client.get_channel(logs_id)
+
+            try:
+                transcript_text = await generate_transcript(channel)
+                transcript_file = discord.File(
+                    fp=io.StringIO(transcript_text),
+                    filename=f"transcript-{channel.name}.txt"
+                )
+
+                owner_id = ticket_owners.get(cid, "Unknown")
+
+                embed = discord.Embed(
+                    title="📝 Ticket Transcript",
+                    description=f"**Channel:** {channel.name}\n**Closed by:** Auto-close (inactive)\n**Owner ID:** {owner_id}",
+                    color=discord.Color.red(),
+                    timestamp=discord.utils.utcnow()
+                )
+
+                if logs_channel:
                     await logs_channel.send(embed=embed, file=transcript_file)
-                except Exception as e:
-                    logger.error(f"Failed to create transcript: {e}")
-                ticket_owners.pop(cid, None)
-                last_activity.pop(cid, None)
-                await channel.delete()
+
+            except Exception as e:
+                logger.error(f"Failed to create transcript: {e}")
+
+            ticket_owners.pop(cid, None)
+            last_activity.pop(cid, None)
+            await channel.delete()
 
 # -------------------- PERSISTENT COMPONENTS --------------------
 
@@ -304,16 +318,18 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    # Track ticket activity
+    # Track ticket activity in servers
     if message.guild and message.channel.id in ticket_owners:
         last_activity[message.channel.id] = message.created_at.timestamp()
 
-    # ONLY process DMs for applications
+    # If NOT DM → allow slash commands to work
     if not isinstance(message.channel, discord.DMChannel):
+        await client.process_commands(message)
         return
 
     user_id = message.author.id
 
+    # Not in application flow
     if user_id not in application_states:
         return
 
@@ -322,7 +338,7 @@ async def on_message(message):
     answers = state['answers']
 
     # Save answer
-    answers.append(message.content)
+    answers.append(message.content.strip())
     step += 1
 
     # Ask next question
@@ -331,7 +347,7 @@ async def on_message(message):
         await message.channel.send(f"**Question {step + 1}:** {questions[step]}")
         return
 
-    # All questions answered
+    # Application finished
     del application_states[user_id]
 
     embed = discord.Embed(
@@ -341,11 +357,12 @@ async def on_message(message):
         timestamp=discord.utils.utcnow()
     )
 
-    # Add every Q/A automatically
+    # Add Q/A safely
     for i in range(len(questions)):
+        answer = answers[i] if answers[i] else "No response"
         embed.add_field(
             name=f"Q{i+1}: {questions[i]}",
-            value=answers[i],
+            value=answer,
             inline=False
         )
 
@@ -354,14 +371,14 @@ async def on_message(message):
         icon_url=message.author.avatar.url if message.author.avatar else None
     )
 
-    # SAFE send to logs
+    # Send to logs safely
     logs_id = application_config.get("logs_channel")
     role_id = application_config.get("staff_role")
 
-    if logs_id and role_id:
+    if logs_id:
         logs_channel = client.get_channel(logs_id)
         guild = client.get_guild(GUILD_ID)
-        staff_role = guild.get_role(role_id)
+        staff_role = guild.get_role(role_id) if guild and role_id else None
 
         if logs_channel:
             await logs_channel.send(
@@ -370,6 +387,7 @@ async def on_message(message):
             )
 
     await message.channel.send("✅ Your staff application has been submitted successfully.")
+    await client.process_commands(message)
 
 # -------------------- COMMANDS --------------------
 
@@ -491,6 +509,9 @@ async def applications(interaction: discord.Interaction):
     try:
         await interaction.user.send(f"**Question 1:** {questions[0]}")
     except:
+        application_states.pop(user_id, None)
         await interaction.followup.send("I cannot DM you. Please enable DMs from server members.", ephemeral=True)
-        if __name__ == "__main__":
+# -------------------- START BOT --------------------
+
+if __name__ == "__main__":
     client.run(TOKEN)
