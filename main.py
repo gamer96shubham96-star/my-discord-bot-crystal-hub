@@ -299,12 +299,12 @@ async def on_message(message):
     else:
         del application_states[user_id]
 
-            embed = discord.Embed(
-                title="📝 New Staff Application",
-                description=f"Submitted by {message.author.mention}",
-                color=discord.Color.blue(),
-                timestamp=discord.utils.utcnow()
-            )
+        embed = discord.Embed(
+            title="📝 New Staff Application",
+            description=f"Submitted by {message.author} ({user_id})",
+            color=discord.Color.blue(),
+            timestamp=discord.utils.utcnow()
+        )
 
             embed.add_field(name="Username (MC + Discord)", value=answers[0], inline=False)
             embed.add_field(name="Age", value=answers[1], inline=False)
@@ -327,13 +327,16 @@ async def on_message(message):
                 icon_url=message.author.avatar.url if message.author.avatar else None
             )
 
-            logs_channel = client.get_channel(application_config["logs_channel"])
-            staff_role = message.guild.get_role(application_config["staff_role"])
+        logs_channel = client.get_channel(application_config["logs_channel"])
+        guild = client.get_guild(GUILD_ID)
+        staff_role = guild.get_role(application_config["staff_role"])
 
-            if logs_channel and staff_role:
-                await logs_channel.send(f"{staff_role.mention}", embed=embed)
+        await logs_channel.send(
+            content=staff_role.mention if staff_role else None,
+            embed=embed
+        )
 
-            await message.channel.send("✅ Your staff application has been submitted successfully.")
+        await message.channel.send("✅ Your staff application has been submitted successfully.")
 
 # -------------------- COMMANDS --------------------
 
