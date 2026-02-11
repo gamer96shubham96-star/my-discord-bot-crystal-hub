@@ -292,33 +292,33 @@ async def on_message(message):
             # All answers collected
             del application_states[user_id]
 
-embed = discord.Embed(
-    title="📝 New Staff Application",
-    description=f"Submitted by {message.author.mention}",
-    color=discord.Color.blue(),
-    timestamp=discord.utils.utcnow()
-)
+            embed = discord.Embed(
+                title="📝 New Staff Application",
+                description=f"Submitted by {message.author.mention}",
+                color=discord.Color.blue(),
+                timestamp=discord.utils.utcnow()
+            )
 
-embed.add_field(name="Username (MC + Discord)", value=answers[0], inline=False)
-embed.add_field(name="Age", value=answers[1], inline=False)
-embed.add_field(name="Region / Timezone", value=answers[2], inline=False)
-embed.add_field(name="Gamemodes You Can Test", value=answers[3], inline=False)
-embed.add_field(name="Daily Activity Hours", value=answers[4], inline=False)
-embed.add_field(name="PvP Experience Duration", value=answers[5], inline=False)
-embed.add_field(name="PvP Skill Rating", value=answers[6], inline=False)
-embed.add_field(name="Previous Staff Experience", value=answers[7], inline=False)
-embed.add_field(name="Why You Want To Be Tester", value=answers[8], inline=False)
-embed.add_field(name="What Makes You Different", value=answers[9], inline=False)
-embed.add_field(name="Handling Toxic Players", value=answers[10], inline=False)
-embed.add_field(name="Handling Tier Accusations", value=answers[11], inline=False)
-embed.add_field(name="Can You Record Tests?", value=answers[12], inline=False)
-embed.add_field(name="Understands Abuse = Removal", value=answers[13], inline=False)
-embed.add_field(name="Additional Information", value=answers[14], inline=False)
+            embed.add_field(name="Username (MC + Discord)", value=answers[0], inline=False)
+            embed.add_field(name="Age", value=answers[1], inline=False)
+            embed.add_field(name="Region / Timezone", value=answers[2], inline=False)
+            embed.add_field(name="Gamemodes You Can Test", value=answers[3], inline=False)
+            embed.add_field(name="Daily Activity Hours", value=answers[4], inline=False)
+            embed.add_field(name="PvP Experience Duration", value=answers[5], inline=False)
+            embed.add_field(name="PvP Skill Rating", value=answers[6], inline=False)
+            embed.add_field(name="Previous Staff Experience", value=answers[7], inline=False)
+            embed.add_field(name="Why You Want To Be Tester", value=answers[8], inline=False)
+            embed.add_field(name="What Makes You Different", value=answers[9], inline=False)
+            embed.add_field(name="Handling Toxic Players", value=answers[10], inline=False)
+            embed.add_field(name="Handling Tier Accusations", value=answers[11], inline=False)
+            embed.add_field(name="Can You Record Tests?", value=answers[12], inline=False)
+            embed.add_field(name="Understands Abuse = Removal", value=answers[13], inline=False)
+            embed.add_field(name="Additional Information", value=answers[14], inline=False)
 
-embed.set_footer(
-    text=f"Applicant ID: {user_id}",
-    icon_url=message.author.avatar.url if message.author.avatar else None
-)
+            embed.set_footer(
+                text=f"Applicant ID: {user_id}",
+                icon_url=message.author.avatar.url if message.author.avatar else None
+            )
 
             logs_channel = client.get_channel(application_config["logs_channel"])
             staff_role = message.guild.get_role(application_config["staff_role"])
