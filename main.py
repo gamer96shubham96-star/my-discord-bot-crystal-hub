@@ -46,14 +46,21 @@ interesting_quotes = [
 
 # Questions for staff applications
 questions = [
-    "What is your Minecraft username?",
+    "Username (Minecraft + Discord)?",
     "How old are you?",
-    "What region are you from?",
+    "What is your Region / Timezone?",
     "What gamemodes can you test? (Crystal, NethPot, SMP, Sword)",
-    "How much experience do you have in PvP?",
-    "Why do you want to become a staff tester?",
     "How many hours can you give daily?",
-    "Have you been staff before? If yes, where?"
+    "How long have you been doing PvP?",
+    "Rate your PvP skill from 1-10",
+    "Do you have previous staff experience? If yes, where?",
+    "Why do you want to become a Tester?",
+    "What makes you different from other applicants?",
+    "How would you handle toxic players during tests?",
+    "How would you handle false tier accusations?",
+    "Can you record your tests? (Yes/No)",
+    "Do you understand abuse = instant removal? (Yes/No)",
+    "Any additional information?"
 ]
 
 # -------------------- FUNCTIONS --------------------
@@ -273,11 +280,11 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    # Handle ticket activity in servers
+    # Track ticket activity
     if message.guild and message.channel.id in ticket_owners:
         last_activity[message.channel.id] = message.created_at.timestamp()
 
-    # ONLY handle DMs for applications
+    # ONLY process DMs for applications
     if not isinstance(message.channel, discord.DMChannel):
         return
 
@@ -290,52 +297,51 @@ async def on_message(message):
     step = state['step']
     answers = state['answers']
 
+    # Save answer
     answers.append(message.content)
     step += 1
 
+    # Ask next question
     if step < len(questions):
         state['step'] = step
         await message.channel.send(f"**Question {step + 1}:** {questions[step]}")
-    else:
-        del application_states[user_id]
+        return
 
-        embed = discord.Embed(
-            title="📝 New Staff Application",
-            description=f"Submitted by {message.author} ({user_id})",
-            color=discord.Color.blue(),
-            timestamp=discord.utils.utcnow()
+    # All questions answered
+    del application_states[user_id]
+
+    embed = discord.Embed(
+        title="📝 New Staff Application",
+        description=f"Submitted by {message.author} ({user_id})",
+        color=discord.Color.blue(),
+        timestamp=discord.utils.utcnow()
+    )
+
+    # Add every Q/A automatically
+    for i in range(len(questions)):
+        embed.add_field(
+            name=f"Q{i+1}: {questions[i]}",
+            value=answers[i],
+            inline=False
         )
-            embed.add_field(name="Username (MC + Discord)", value=answers[0], inline=False)
-            embed.add_field(name="Age", value=answers[1], inline=False)
-            embed.add_field(name="Region / Timezone", value=answers[2], inline=False)
-            embed.add_field(name="Gamemodes You Can Test", value=answers[3], inline=False)
-            embed.add_field(name="Daily Activity Hours", value=answers[4], inline=False)
-            embed.add_field(name="PvP Experience Duration", value=answers[5], inline=False)
-            embed.add_field(name="PvP Skill Rating", value=answers[6], inline=False)
-            embed.add_field(name="Previous Staff Experience", value=answers[7], inline=False)
-            embed.add_field(name="Why You Want To Be Tester", value=answers[8], inline=False)
-            embed.add_field(name="What Makes You Different", value=answers[9], inline=False)
-            embed.add_field(name="Handling Toxic Players", value=answers[10], inline=False)
-            embed.add_field(name="Handling Tier Accusations", value=answers[11], inline=False)
-            embed.add_field(name="Can You Record Tests?", value=answers[12], inline=False)
-            embed.add_field(name="Understands Abuse = Removal", value=answers[13], inline=False)
-            embed.add_field(name="Additional Information", value=answers[14], inline=False)
 
-            embed.set_footer(
-                text=f"Applicant ID: {user_id}",
-                icon_url=message.author.avatar.url if message.author.avatar else None
-            )
+    embed.set_footer(
+        text=f"Applicant ID: {user_id}",
+        icon_url=message.author.avatar.url if message.author.avatar else None
+    )
 
-        logs_channel = client.get_channel(application_config["logs_channel"])
-        guild = client.get_guild(GUILD_ID)
-        staff_role = guild.get_role(application_config["staff_role"])
+    # Send to logs channel
+    logs_channel = client.get_channel(application_config["logs_channel"])
+    guild = client.get_guild(GUILD_ID)
+    staff_role = guild.get_role(application_config["staff_role"])
 
+    if logs_channel:
         await logs_channel.send(
             content=staff_role.mention if staff_role else None,
             embed=embed
         )
 
-        await message.channel.send("✅ Your staff application has been submitted successfully.")
+    await message.channel.send("✅ Your staff application has been submitted successfully.")
 
 # -------------------- COMMANDS --------------------
 
