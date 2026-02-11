@@ -506,16 +506,24 @@ async def setup_tickets(
     logger.info(f"Ticket system configured by {interaction.user}: Category {category.name}, Staff Role {staff_role.name}, Logs Channel {logs_channel.name}")
     save_config()
 
-@tree.command(name="tier_panel", description="Tier Test Panel", guild=discord.Object(id=GUILD_ID))
-@app_commands.checks.has_permissions(administrator=True)
-async def send_tier_panel(interaction: discord.Interaction):
+@tree.command(name="panel", description="Send ticket panel", guild=discord.Object(id=GUILD_ID))
+async def panel(interaction: discord.Interaction):
+    # Crazy hype text for the description
+    crazy_text = "**🚀 Test Your Tier! 🚀**\n\n**CRYSTAL PVP,NETHPOT,SMP,SWORD ARE AVAILABLE,TEST NOW!**\n\n**💥 TEST & Give Your Best! 💥**\n\n**Select your region, choose your mode, and LET'S GET THIS PARTY STARTED!**\n\n**🔥 WARNING: DON'T WASTE STAFF TIME! 🔥**"
+    
+    # Fun PvP/Gaming GIF URL (replace with a working one if needed)
+    gif_url = "https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif"  # Example: Replace with a real GIF URL like a fighting or gaming one
+    
     embed = discord.Embed(
-        title="🎫 Tier Test Panel",
-        description="Select your **Region** and **Gamemode**, then press **Submit Request**.",
-        color=discord.Color.orange()
+        title="🎫 **TIER TEST PANEL** 🎫",
+        description=crazy_text,
+        color=discord.Color.purple(),  # Crazy color
+        timestamp=discord.utils.utcnow()
     )
-    await interaction.channel.send(embed=embed, view=TierTicketView())
-    await interaction.response.send_message("✅ Tier panel sent!", ephemeral=True)
+    embed.set_image(url=gif_url)  # GIF as image
+    embed.set_footer(text="Test Your Tier ⤵︎", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+    
+    await interaction.response.send_message(embed=embed, view=MainPanel())
 
 @tree.command(name="setup_applications", description="Setup application system", guild=discord.Object(id=GUILD_ID))
 @app_commands.checks.has_permissions(administrator=True)
