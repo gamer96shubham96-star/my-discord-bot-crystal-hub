@@ -26,6 +26,8 @@ tree = app_commands.CommandTree(client)
 ticket_config: dict[str, int] = {}
 ticket_owners: dict[int, int] = {}  # channel_id -> user_id
 user_selections: dict[tuple[int, int], dict] = {}  # Key: (user_id, channel_id), Value: {'region': str, 'mode': str}
+ticket_counter = 1
+last_activity: dict[int, float] = {}  # channel_id -> timestamp
 
 # List of interesting quotes for flair in tickets
 interesting_quotes = [
@@ -49,7 +51,37 @@ async def on_ready():
     client.add_view(MainPanel())
     client.add_view(TierTicketView())
 
+    asyncio.create_task(auto_close_task())
+
     logger.info(f"✅ Logged in as {client.user}")
+
+@client.event
+async def on_message(message):
+    if message.author == client.user:
+        return
+    if message.channel.id in ticket_owners:
+        last_activity[message.channel.id] = message.created_at.timestamp()
+
+async def auto_close_task():
+    while True:
+        await asyncio.sleep(60)
+        now = discord.utils.utcnow().timestamp()
+        to_close = [cid for cid, ts in last_activity.items() if now - ts > 1200]
+        for cid in to_close:
+            channel = client.get_channel(cid)
+            if channel:
+                logs_channel = client.get_channel(ticket_config["logs_channel"])
+                try:
+                    transcript_text = await generate_transcript(channel)
+                    transcript_file = discord.File(fp=io.StringIO(transcript_text), filename=f"transcript-{channel.name}.txt")
+                    owner_id = ticket_owners.get(cid, "Unknown")
+                    embed = discord.Embed(title="📝 Ticket Transcript", description=f"**Channel:** {channel.name}\n**Closed by:** Auto-close (inactive)\n**Owner ID:** {owner_id}", color=discord.Color.red(), timestamp=discord.utils.utcnow())
+                    await logs_channel.send(embed=embed, file=transcript_file)
+                except Exception as e:
+                    logger.error(f"Failed to create transcript: {e}")
+                ticket_owners.pop(cid, None)
+                last_activity.pop(cid, None)
+                await channel.delete()
 
 # -------------------- COMMANDS --------------------
 
@@ -392,12 +424,19 @@ class MainPanel(View):
         }
 
         try:
+            global ticket_counter
             channel = await category.create_text_channel(
-                f"tier-test-{interaction.user.name}".lower().replace(" ", "-"),
+                f"ticket-{ticket_counter:04d}-{interaction.user.name}".lower().replace(" ", "-"),
                 overwrites=overwrites
             )
+            ticket_counter += 1
 
             ticket_owners[channel.id] = interaction.user.id
+            last_activity[channel.id] = discord.utils.utcnow().timestamp()
+
+            logs_channel = interaction.guild.get_channel(ticket_config["logs_channel"])
+            if logs_channel:
+                await logs_channel.send(f"New ticket created by {interaction.user.mention}\n[Jump to Ticket]({channel.jump_url})")
 
             welcome_embed = discord.Embed(
                 title="🎫 Welcome to Your Tier Test Ticket!",
@@ -426,40 +465,6 @@ class MainPanel(View):
             )
 
 
-        # Test sending a simple message first to check permissions
-        try:
-            channel = await category.create_text_channel(channel_name, overwrites=overwrites)
-
-            # Test sending a simple message first to check permissions
-            test_msg = await channel.send("Testing permissions...")
-            await test_msg.delete()
-
-            ticket_owners[channel.id] = interaction.user.id
-
-            welcome_embed = discord.Embed(
-                title="🎫 Welcome to Your Tier Test Ticket!",
-                description=f"Hello {interaction.user.mention}!\n\nPlease select your Region and Mode below and submit.\n\n{random.choice(interesting_quotes)}",
-                color=discord.Color.blue(),
-                timestamp=discord.utils.utcnow()
-            )
-
-            await channel.send(embed=welcome_embed, view=TierTicketView())
-            await channel.send("", view=TicketButtons())
-
-            await interaction.response.send_message(
-                f"✅ Ticket created: {channel.mention}\n\nHead over to the channel to proceed!",
-                ephemeral=True
-            )
-
-            logger.info(f"Ticket created by {interaction.user}: Channel {channel_name}")
-
-        except Exception as e:
-            logger.error(f"Error creating or setting up ticket channel: {e}")
-            await interaction.response.send_message(
-                "Ticket channel created, but setup failed. Check bot permissions.",
-                ephemeral=True
-            )
-
 @tree.command(name="panel", description="Send ticket panel", guild=discord.Object(id=GUILD_ID))
 async def panel(interaction: discord.Interaction):
     # Crazy hype text for the description
@@ -484,8 +489,4 @@ if __name__ == "__main__":
         client.run(TOKEN)
     except discord.HTTPException as e:
         if e.status == 429:
-            logger.error("Rate limit hit. Waiting before retry...")
-            asyncio.run(asyncio.sleep(60))  # Wait 60 seconds before retrying
-            client.run(TOKEN)
-        else:
-            raise
+           
