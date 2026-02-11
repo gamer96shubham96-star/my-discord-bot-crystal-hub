@@ -310,7 +310,7 @@ class ClaimButton(Button):
         claimer = interaction.user
 
         # Rename
-        await channel.edit(name=f"✅claimed-by-{claimer.name}".lower().replace(" ", "-"))
+        await channel.edit(name=f"✅{claimer.name}-{ticket_counter:04d}".lower().replace(" ", "-"))
 
         # Remove ALL staff access
         await channel.set_permissions(staff_role, overwrite=discord.PermissionOverwrite(view_channel=False))
