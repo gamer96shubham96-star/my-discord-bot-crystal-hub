@@ -272,22 +272,29 @@ async def on_ready():
 async def on_message(message):
     if message.author == client.user:
         return
+
     if message.channel.id in ticket_owners:
         last_activity[message.channel.id] = message.created_at.timestamp()
+
     user_id = message.author.id
+
     if user_id in application_states:
         state = application_states[user_id]
         step = state['step']
         answers = state['answers']
         answers.append(message.content)
         step += 1
+
         if step < len(questions):
             state['step'] = step
             await message.channel.send(f"**Question {step + 1}:** {questions[step]}")
         else:
-            # All answers collected
             del application_states[user_id]
-            # Create embed
+            # (rest of your embed code)
+
+    # 🔥 THIS IS THE MISSING LINE
+    await client.process_commands(message)
+
             embed = discord.Embed(
                 title="📝 New Staff Application",
                 description=f"Submitted by {message.author.mention}",
