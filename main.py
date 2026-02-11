@@ -350,23 +350,22 @@ async def on_message(message):
         icon_url=message.author.avatar.url if message.author.avatar else None
     )
 
-    # Send to logs channel
-logs_id = application_config.get("logs_channel")
-role_id = application_config.get("staff_role")
+    # SAFE send to logs
+    logs_id = application_config.get("logs_channel")
+    role_id = application_config.get("staff_role")
 
-if logs_id and role_id:
-    logs_channel = client.get_channel(logs_id)
-    guild = client.get_guild(GUILD_ID)
-    staff_role = guild.get_role(role_id)
+    if logs_id and role_id:
+        logs_channel = client.get_channel(logs_id)
+        guild = client.get_guild(GUILD_ID)
+        staff_role = guild.get_role(role_id)
 
-    if logs_channel:
-        await logs_channel.send(
-            content=staff_role.mention if staff_role else None,
-            embed=embed
-        )
+        if logs_channel:
+            await logs_channel.send(
+                content=staff_role.mention if staff_role else None,
+                embed=embed
+            )
 
     await message.channel.send("✅ Your staff application has been submitted successfully.")
-    await client.process_commands(message)
 
 # -------------------- COMMANDS --------------------
 
