@@ -318,7 +318,10 @@ class MainPanel(View):
     @discord.ui.button(label="♛ Tier Test", style=discord.ButtonStyle.blurple, custom_id="panel_tier_btn")
     async def tier(self, interaction: discord.Interaction, button: Button):
         if "category" not in ticket_config or "staff_role" not in ticket_config or "logs_channel" not in ticket_config:
-            await interaction.response.send_message("Ticket system is not fully configured. Please ask an admin to run `/setup_tickets` with category, staff role, and logs channel.", ephemeral=True)
+            await interaction.response.send_message(
+                "Ticket system is not fully configured. Please ask an admin to run `/setup_tickets`.",
+                ephemeral=True
+            )
             return
 
         category = interaction.guild.get_channel(ticket_config["category"])
@@ -327,46 +330,51 @@ class MainPanel(View):
             return
 
         channel_name = f"tier-test-{interaction.user.name}"
+
         overwrites = {
             interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
             interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
             interaction.guild.get_role(ticket_config["staff_role"]): discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            client.user: discord.PermissionOverwrite(read_messages=True, send_messages=True, embed_links=True, attach_files=True),  # Added more permissions for embeds
+            interaction.guild.me: discord.PermissionOverwrite(
+                read_messages=True,
+                send_messages=True,
+                embed_links=True,
+                attach_files=True,
+                manage_channels=True,
+            ),
         }
+
         try:
             channel = await category.create_text_channel(channel_name, overwrites=overwrites)
+            ticket_owners[channel.id] = interaction.user.id
+
+            welcome_embed = discord.Embed(
+                title="🎫 Welcome to Your Tier Test Ticket!",
+                description=(
+                    f"Hello {interaction.user.mention}!\n\n"
+                    "Please select your Region and Mode below and submit.\n\n"
+                    f"{random.choice(interesting_quotes)}"
+                ),
+                color=discord.Color.blue(),
+                timestamp=discord.utils.utcnow()
+            )
+
+            await channel.send(embed=welcome_embed, view=TierTicketView())
+            await channel.send("Staff Controls:", view=TicketButtons())
+
+            await interaction.response.send_message(
+                f"✅ Ticket created: {channel.mention}\n\nHead over to the channel to proceed!",
+                ephemeral=True
+            )
+
+            logger.info(f"Ticket created by {interaction.user}: Channel {channel_name}")
+
         except Exception as e:
-            logger.error(f"Error creating ticket channel: {e}")
-            await interaction.response.send_message("Failed to create ticket channel. Check permissions or try again.", ephemeral=True)
-            return
-
-        # Test sending a simple message first to check permissions
-        try:
-            test_msg = await channel.send("Testing permissions...")
-            await test_msg.delete()  # Delete test message
-        except Exception as e:
-            logger.error(f"Bot cannot send messages in ticket channel: {e}")
-            await interaction.response.send_message("Ticket channel created, but bot lacks send permissions. Check bot roles.", ephemeral=True)
-            return
-
-        ticket_owners[channel.id] = interaction.user.id
-
-        welcome_embed = discord.Embed(
-            title="🎫 Welcome to Your Tier Test Ticket!",
-            description=f"Hello {interaction.user.mention}!\n\nPlease select your Region and Mode below and submit.\n\n{random.choice(interesting_quotes)}",
-            color=discord.Color.blue(),
-            timestamp=discord.utils.utcnow()
-        )
-
-        await channel.send(embed=welcome_embed, view=TierTicketView())
-        await channel.send("Staff Controls:", view=TicketButtons())
-
-        await interaction.response.send_message(f"✅ Ticket created: {channel.mention}\n\nHead over to the channel to proceed!", ephemeral=True)
-
-        logger.info(f"Ticket created by {interaction.user}: Channel {channel_name}")
-        except Exception as e:
-            logger.error(f"Error sending embeds/views to ticket channel: {e}")
-            await interaction.response.send_message("Ticket channel created, but setup failed. Check the channel for issues.", ephemeral=True)
+            logger.error(f"Error creating or setting up ticket channel: {e}")
+            await interaction.response.send_message(
+                "Failed to create ticket channel. Check bot permissions and try again.",
+                ephemeral=True
+            )
 
 @tree.command(name="panel", description="Send ticket panel", guild=discord.Object(id=GUILD_ID))
 async def panel(interaction: discord.Interaction):
