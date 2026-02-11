@@ -273,6 +273,12 @@ async def on_message(message):
     if message.author == client.user:
         return
 
+    if message.guild is None:
+        return
+
+    if message.interaction:
+        return
+
     if message.channel.id in ticket_owners:
         last_activity[message.channel.id] = message.created_at.timestamp()
 
