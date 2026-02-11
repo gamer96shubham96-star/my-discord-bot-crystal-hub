@@ -111,7 +111,10 @@ async def auto_close_task():
         for cid in to_close:
             channel = client.get_channel(cid)
             if channel:
-                logs_channel = client.get_channel(ticket_config["logs_channel"])
+logs_id = ticket_config.get("logs_channel")
+if not logs_id:
+    continue
+logs_channel = client.get_channel(logs_id)
                 try:
                     transcript_text = await generate_transcript(channel)
                     transcript_file = discord.File(fp=io.StringIO(transcript_text), filename=f"transcript-{channel.name}.txt")
@@ -292,6 +295,7 @@ async def on_ready():
     # Add persistent views to handle interactions even after restart
     client.add_view(MainPanel())
     client.add_view(TierTicketView())
+    client.add_view(TicketButtons())
     asyncio.create_task(auto_close_task())
     logger.info(f"✅ Logged in as {client.user}")
 
@@ -488,3 +492,5 @@ async def applications(interaction: discord.Interaction):
         await interaction.user.send(f"**Question 1:** {questions[0]}")
     except:
         await interaction.followup.send("I cannot DM you. Please enable DMs from server members.", ephemeral=True)
+        if __name__ == "__main__":
+    client.run(TOKEN)
