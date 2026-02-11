@@ -411,4 +411,15 @@ async def setup_applications(
 
 @tree.command(name="applications", description="Start staff application", guild=discord.Object(id=GUILD_ID))
 async def applications(interaction: discord.Interaction):
-    if "logs_channel" not in application_config or "staff_role" not in application_config
+    if "logs_channel" not in application_config or "staff_role" not in application_config:
+        await interaction.response.send_message("Application system is not configured by admins.", ephemeral=True)
+        return
+
+    user_id = interaction.user.id
+
+    if user_id in application_states:
+        await interaction.response.send_message("You already have a pending application.", ephemeral=True)
+        return
+
+    application_states[user_id] = {'step': 0, 'answers': []}
+    await interaction.response.send_message(f"**Question 1:** {questions[0]}")
