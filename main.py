@@ -299,7 +299,6 @@ async def on_message(message):
     else:
         del application_states[user_id]
 
-
             embed = discord.Embed(
                 title="📝 New Staff Application",
                 description=f"Submitted by {message.author.mention}",
