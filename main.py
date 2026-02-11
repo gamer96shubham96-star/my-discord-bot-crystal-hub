@@ -351,9 +351,13 @@ async def on_message(message):
     )
 
     # Send to logs channel
-    logs_channel = client.get_channel(application_config["logs_channel"])
+logs_id = application_config.get("logs_channel")
+role_id = application_config.get("staff_role")
+
+if logs_id and role_id:
+    logs_channel = client.get_channel(logs_id)
     guild = client.get_guild(GUILD_ID)
-    staff_role = guild.get_role(application_config["staff_role"])
+    staff_role = guild.get_role(role_id)
 
     if logs_channel:
         await logs_channel.send(
