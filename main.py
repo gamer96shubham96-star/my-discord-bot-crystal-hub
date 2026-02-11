@@ -474,6 +474,7 @@ class CloseButton(Button):
 
         await asyncio.sleep(2)
         await channel.delete()
+
 def find_existing_ticket(guild: discord.Guild, user_id: int) -> discord.TextChannel | None:
     for channel_id, owner_id in ticket_owners.items():
         if owner_id == user_id:
