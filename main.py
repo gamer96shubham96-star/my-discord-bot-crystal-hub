@@ -24,10 +24,12 @@ client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
 ticket_config: dict[str, int] = {}
+application_config: dict[str, int] = {}
 ticket_owners: dict[int, int] = {}  # channel_id -> user_id
 user_selections: dict[tuple[int, int], dict] = {}  # Key: (user_id, channel_id), Value: {'region': str, 'mode': str}
 ticket_counter = 1
 last_activity: dict[int, float] = {}  # channel_id -> timestamp
+application_states: dict[int, dict] = {}  # user_id -> {'step': int, 'answers': list[str]}
 
 # List of interesting quotes for flair in tickets
 interesting_quotes = [
@@ -36,6 +38,17 @@ interesting_quotes = [
     "Tier Is A Identity Of A Fighter!",
     "Test Tier Wake Earlier!",
     "Subscribe-https://www.youtube.com/@Shubham96Official"
+]
+
+questions = [
+    "What is your Minecraft username?",
+    "How old are you?",
+    "What region are you from?",
+    "What gamemodes can you test? (Crystal, NethPot, SMP, Sword)",
+    "How much experience do you have in PvP?",
+    "Why do you want to become a staff tester?",
+    "How many hours can you give daily?",
+    "Have you been staff before? If yes, where?"
 ]
 
 @client.event
@@ -50,8 +63,6 @@ async def on_ready():
     # Add persistent views to handle interactions even after restart
     client.add_view(MainPanel())
     client.add_view(TierTicketView())
-    client.add_view(ApplyPanel())
-    client.add_view(ApplyButtons())
 
     asyncio.create_task(auto_close_task())
 
@@ -63,6 +74,45 @@ async def on_message(message):
         return
     if message.channel.id in ticket_owners:
         last_activity[message.channel.id] = message.created_at.timestamp()
+    
+    user_id = message.author.id
+    if user_id in application_states:
+        state = application_states[user_id]
+        step = state['step']
+        answers = state['answers']
+        answers.append(message.content)
+        step += 1
+        if step < len(questions):
+            state['step'] = step
+            await message.channel.send(f"**Question {step + 1}:** {questions[step]}")
+        else:
+            # All answers collected
+            del application_states[user_id]
+            
+            # Create embed
+            embed = discord.Embed(
+                title="📝 New Staff Application",
+                description=f"Submitted by {message.author.mention}",
+                color=discord.Color.blue(),
+                timestamp=discord.utils.utcnow()
+            )
+            embed.add_field(name="Minecraft Username", value=answers[0], inline=False)
+            embed.add_field(name="Age", value=answers[1], inline=False)
+            embed.add_field(name="Region", value=answers[2], inline=False)
+            embed.add_field(name="Gamemodes", value=answers[3], inline=False)
+            embed.add_field(name="PvP Experience", value=answers[4], inline=False)
+            embed.add_field(name="Why Become Tester", value=answers[5], inline=False)
+            embed.add_field(name="Daily Hours", value=answers[6], inline=False)
+            embed.add_field(name="Previous Staff Experience", value=answers[7], inline=False)
+            embed.set_footer(text=f"Applicant ID: {user_id}", icon_url=message.author.avatar.url if message.author.avatar else None)
+            
+            # Send to logs
+            logs_channel = client.get_channel(application_config["logs_channel"])
+            staff_role = client.get_role(application_config["staff_role"])
+            if logs_channel and staff_role:
+                await logs_channel.send(f"{staff_role.mention}", embed=embed)
+            
+            await message.channel.send("✅ Your staff application has been submitted successfully.")
 
 async def auto_close_task():
     while True:
@@ -195,6 +245,41 @@ async def setup_tickets(
     # Log the setup
     logger.info(f"Ticket system configured by {interaction.user}: Category {category.name}, Staff Role {staff_role.name}, Logs Channel {logs_channel.name}")
 
+@tree.command(name="setup_applications", description="Setup application system", guild=discord.Object(id=GUILD_ID))
+@app_commands.checks.has_permissions(administrator=True)
+async def setup_applications(
+    interaction: discord.Interaction,
+    logs_channel: discord.TextChannel,
+    staff_role: discord.Role,
+):
+    application_config["logs_channel"] = logs_channel.id
+    application_config["staff_role"] = staff_role.id
+    embed = discord.Embed(
+        title="✅ Application System Configured",
+        description=f"Logs Channel: {logs_channel.mention}\nStaff Role: {staff_role.mention}",
+        color=discord.Color.green(),
+        timestamp=discord.utils.utcnow()
+    )
+    embed.set_footer(text="Configuration completed", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    # Log the setup
+    logger.info(f"Application system configured by {interaction.user}: Logs Channel {logs_channel.name}, Staff Role {staff_role.name}")
+
+@tree.command(name="applications", description="Start staff application", guild=discord.Object(id=GUILD_ID))
+async def applications(interaction: discord.Interaction):
+    if "logs_channel" not in application_config or "staff_role" not in application_config:
+        await interaction.response.send_message("Application system is not configured by admins.", ephemeral=True)
+        return
+    
+    user_id = interaction.user.id
+    if user_id in application_states:
+        await interaction.response.send_message("You already have a pending application.", ephemeral=True)
+        return
+    
+    application_states[user_id] = {'step': 0, 'answers': []}
+    await interaction.response.send_message(f"**Question 1:** {questions[0]}")
+
 # -------------------- PERSISTENT COMPONENTS --------------------
 
 class RegionSelect(Select):
@@ -312,7 +397,7 @@ class ClaimButton(Button):
         claimer = interaction.user
 
         # Rename
-        await channel.edit(name=f"✅{claimer.name}-{ticket_counter:04d}".lower().replace(" ", "-"))
+        await channel.edit(name=f"✅claimed-by-{claimer.name}".lower().replace(" ", "-"))
 
         # Remove ALL staff access
         await channel.set_permissions(staff_role, overwrite=discord.PermissionOverwrite(view_channel=False))
@@ -390,188 +475,4 @@ class CloseButton(Button):
         await asyncio.sleep(2)
         await channel.delete()
 def find_existing_ticket(guild: discord.Guild, user_id: int) -> discord.TextChannel | None:
-    for channel_id, owner_id in ticket_owners.items():
-        if owner_id == user_id:
-            channel = guild.get_channel(channel_id)
-            if channel:  # still exists
-                return channel
-    return None
-# -------------------- APPLY SYSTEM --------------------
-
-apply_owners: dict[int, int] = {}  # channel_id -> user_id
-
-
-class ApplyQuestions(discord.ui.Modal, title="Tester Application"):
-    name = discord.ui.TextInput(label="Your Name", required=True)
-    age = discord.ui.TextInput(label="Your Age", required=True)
-    experience = discord.ui.TextInput(label="PvP Experience", style=discord.TextStyle.paragraph, required=True)
-    why = discord.ui.TextInput(label="Why should we select you?", style=discord.TextStyle.paragraph, required=True)
-
-    async def on_submit(self, interaction: discord.Interaction):
-        channel = interaction.channel
-
-        embed = discord.Embed(
-            title="📝 New Tester Application",
-            color=discord.Color.blurple(),
-            timestamp=discord.utils.utcnow()
-        )
-        embed.add_field(name="Name", value=self.name.value, inline=False)
-        embed.add_field(name="Age", value=self.age.value, inline=False)
-        embed.add_field(name="Experience", value=self.experience.value, inline=False)
-        embed.add_field(name="Why Select You", value=self.why.value, inline=False)
-        embed.set_footer(text=f"Applicant: {interaction.user}", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
-
-        await channel.send(embed=embed, view=ApplyButtons())
-        await interaction.response.send_message("✅ Application submitted!", ephemeral=True)
-
-
-class ApplyButtons(View):
-    def __init__(self):
-        super().__init__(timeout=None)
-
-    @discord.ui.button(label="Accept", style=discord.ButtonStyle.green)
-    async def accept(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_message("✅ Application Accepted")
-        await interaction.channel.edit(name="accepted-application")
-
-    @discord.ui.button(label="Reject", style=discord.ButtonStyle.red)
-    async def reject(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_message("❌ Application Rejected")
-        await interaction.channel.edit(name="rejected-application")
-
-
-class ApplyPanel(View):
-    def __init__(self):
-        super().__init__(timeout=None)
-
-    @discord.ui.button(label="📝 Apply for Tester", style=discord.ButtonStyle.green, custom_id="apply_btn")
-    async def apply(self, interaction: discord.Interaction, button: Button):
-
-        category = interaction.guild.get_channel(ticket_config["category"])
-        staff_role = interaction.guild.get_role(ticket_config["staff_role"])
-
-        overwrites = {
-            interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            staff_role: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            client.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-        }
-
-        channel = await category.create_text_channel(
-            f"apply-{interaction.user.name}".lower().replace(" ", "-"),
-            overwrites=overwrites
-        )
-
-        apply_owners[channel.id] = interaction.user.id
-
-        await channel.send(f"{interaction.user.mention} please fill the application form below.")
-        await interaction.response.send_modal(ApplyQuestions())
- #--------------------------------------------------------------------------------
-class MainPanel(View):
-    def __init__(self):
-        super().__init__(timeout=None)
-
-    @discord.ui.button(label="♛ Tier Test", style=discord.ButtonStyle.blurple, custom_id="panel_tier_btn")
-    async def tier(self, interaction: discord.Interaction, button: Button):
-
-        if "category" not in ticket_config:
-            await interaction.response.send_message("Ticket system not configured.", ephemeral=True)
-            return
-
-        existing = find_existing_ticket(interaction.guild, interaction.user.id)
-        if existing:
-            await interaction.response.send_message(
-                f"❌ You already have an open ticket: {existing.mention}",
-                ephemeral=True
-            )
-            return
-
-        category = interaction.guild.get_channel(ticket_config["category"])
-
-        overwrites = {
-            interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            interaction.guild.get_role(ticket_config["staff_role"]): discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            client.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-        }
-
-        try:
-            global ticket_counter
-            channel = await category.create_text_channel(
-                f"ticket-{ticket_counter:04d}-{interaction.user.name}".lower().replace(" ", "-"),
-                overwrites=overwrites
-            )
-            ticket_counter += 1
-
-            ticket_owners[channel.id] = interaction.user.id
-            last_activity[channel.id] = discord.utils.utcnow().timestamp()
-
-            logs_channel = interaction.guild.get_channel(ticket_config["logs_channel"])
-            if logs_channel:
-                await logs_channel.send(f"New ticket created by {interaction.user.mention}\n[Jump to Ticket]({channel.jump_url})")
-
-            welcome_embed = discord.Embed(
-                title="🎫 Welcome to Your Tier Test Ticket!",
-                description=(
-                    f"Hello {interaction.user.mention}!\n\n"
-                    f"{random.choice(interesting_quotes)}\n\n"
-                    "Please select your Region and Mode below, then submit your request."
-                ),
-                color=discord.Color.blue(),
-                timestamp=discord.utils.utcnow()
-            )
-
-            await channel.send(embed=welcome_embed, view=TierTicketView())
-            await channel.send("", view=TicketButtons())
-
-            await interaction.response.send_message(
-                f"✅ Ticket created: {channel.mention}",
-                ephemeral=True
-            )
-
-        except Exception as e:
-            logger.error(e)
-            await interaction.response.send_message(
-                "Failed to create ticket.",
-                ephemeral=True
-            )
-@tree.command(name="applypanel", description="Send apply panel", guild=discord.Object(id=GUILD_ID))
-async def applypanel(interaction: discord.Interaction):
-    embed = discord.Embed(
-        title="📝 Tester Application Panel",
-        description="Want to become a Tester? Click below and apply!",
-        color=discord.Color.green()
-    )
-    await interaction.response.send_message(embed=embed, view=ApplyPanel())
-
-
-@tree.command(name="panel", description="Send ticket panel", guild=discord.Object(id=GUILD_ID))
-async def panel(interaction: discord.Interaction):
-    # Crazy hype text for the description
-    crazy_text = "**🚀 Test Your Tier! 🚀**\n\n**CRYSTAL PVP,NETHPOT,SMP,SWORD ARE AVAILABLE,TEST NOW!**\n\n**💥 TEST & Give Your Best! 💥**\n\n**Select your region, choose your mode, and LET'S GET THIS PARTY STARTED!**\n\n**🔥 WARNING: DON'T WASTE STAFF TIME! 🔥**"
-    
-    # Fun PvP/Gaming GIF URL (replace with a working one if needed)
-    gif_url = "https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif"  # Example: Replace with a real GIF URL like a fighting or gaming one
-    
-    embed = discord.Embed(
-        title="🎫 **TIER TEST PANEL** 🎫",
-        description=crazy_text,
-        color=discord.Color.purple(),  # Crazy color
-        timestamp=discord.utils.utcnow()
-    )
-    embed.set_image(url=gif_url)  # GIF as image
-    embed.set_footer(text="Test Your Tier ⤵︎", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
-    
-    await interaction.response.send_message(embed=embed, view=MainPanel())
-
-if __name__ == "__main__":
-    try:
-        client.run(TOKEN)
-    except discord.HTTPException as e:
-        if e.status == 429:
-            logger.error("Rate limit hit. Waiting before retry...")
-            asyncio.run(asyncio.sleep(60))
-            client.run(TOKEN)
-        else:
-            raise
-           
+    for channel_id, owner_id in ticket
