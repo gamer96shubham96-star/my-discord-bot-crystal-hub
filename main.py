@@ -63,6 +63,25 @@ questions = [
     "Any additional information?"
 ]
 
+CONFIG_FILE = "config.json"
+
+import json
+
+def save_config():
+    with open(CONFIG_FILE, "w") as f:
+        json.dump({
+            "ticket_config": ticket_config,
+            "application_config": application_config
+        }, f)
+
+def load_config():
+    global ticket_config, application_config
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "r") as f:
+            data = json.load(f)
+            ticket_config.update(data.get("ticket_config", {}))
+            application_config.update(data.get("application_config", {}))
+
 # -------------------- FUNCTIONS --------------------
 
 async def generate_transcript(channel: discord.TextChannel) -> str:
@@ -264,6 +283,7 @@ class CloseButton(Button):
 
 @client.event
 async def on_ready():
+    load_config()
     guild = discord.Object(id=GUILD_ID)
     # Sync commands globally first, then to the specific guild for faster updates
     await tree.sync()
@@ -342,6 +362,7 @@ async def on_message(message):
         )
 
     await message.channel.send("✅ Your staff application has been submitted successfully.")
+    await client.process_commands(message)
 
 # -------------------- COMMANDS --------------------
 
@@ -421,6 +442,7 @@ async def setup_tickets(
     await interaction.response.send_message(embed=embed, ephemeral=True)
     # Log the setup
     logger.info(f"Ticket system configured by {interaction.user}: Category {category.name}, Staff Role {staff_role.name}, Logs Channel {logs_channel.name}")
+    save_config()
 
 @tree.command(name="setup_applications", description="Setup application system", guild=discord.Object(id=GUILD_ID))
 @app_commands.checks.has_permissions(administrator=True)
@@ -441,6 +463,7 @@ async def setup_applications(
     await interaction.response.send_message(embed=embed, ephemeral=True)
     # Log the setup
     logger.info(f"Application system configured by {interaction.user}: Logs Channel {logs_channel.name}, Staff Role {staff_role.name}")
+    save_config()
 
 @tree.command(name="applications", description="Start staff application", guild=discord.Object(id=GUILD_ID))
 async def applications(interaction: discord.Interaction):
