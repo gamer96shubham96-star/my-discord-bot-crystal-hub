@@ -1,5 +1,4 @@
 import os
-import io
 import asyncio
 import discord
 from discord import app_commands
@@ -29,11 +28,11 @@ user_selections: dict[tuple[int, int], dict] = {}  # Key: (user_id, channel_id),
 
 # List of interesting quotes for flair in tickets
 interesting_quotes = [
-    "Shubham96 Is The Best Cpvp Tester!",
-    "qbhishekyt_11 is The Best Nethpot Tester!",
-    "Tier Is A Identity Of A Fighter!",
-    "Test Tier Wake Earlier!",
-    "Subscribe-https://www.youtube.com/@Shubham96Official"
+    "Skill is not just about winning, it's about growth.",
+    "Every challenge is an opportunity to rise.",
+    "PvP is not a game, it's a battlefield of wits.",
+    "Tier up or step down – the choice is yours.",
+    "In the world of PvP, only the strong survive... or adapt."
 ]
 
 @client.event
@@ -101,7 +100,7 @@ async def tier(
 ):
     # Exact custom formatted result message as requested, with enhanced markdown
     result_text = f"""|| @everyone ||
-## ⛨  Crystal Hub {mode.value} Tier • TIER RESULTS  ⛨
+## ⛨  Crystal Hub {mode.value} Tier • OFFICIAL TIER RESULTS  ⛨
 
 ### ⚚ Tester
 {tester.mention}
@@ -252,7 +251,7 @@ class TicketButtons(View):
 
 class ClaimButton(Button):
     def __init__(self):
-        super().__init__(label="Claim", style=discord.ButtonStyle.green, custom_id="ticket_claim_btn")
+        super().__init__(label="Claim", style=discord.ButtonStyle.blurple, custom_id="ticket_claim_btn")
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer()
@@ -278,7 +277,7 @@ class ClaimButton(Button):
         claimer = interaction.user
 
         # Rename
-        await channel.edit(name=f"✅claimed-by-{claimer.name}".lower().replace(" ", "-"))
+        await channel.edit(name=f"claimed-by-{claimer.name}".lower().replace(" ", "-"))
 
         # Remove ALL staff access
         await channel.set_permissions(staff_role, overwrite=discord.PermissionOverwrite(view_channel=False))
@@ -295,19 +294,6 @@ class ClaimButton(Button):
         await interaction.message.edit(view=self.view)
         await interaction.followup.send(f"✅ Ticket claimed by {claimer.mention}")
         
-async def generate_transcript(channel: discord.TextChannel) -> str:
-    lines = []
-    async for msg in channel.history(limit=None, oldest_first=True):
-        timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M:%S")
-        author = f"{msg.author} ({msg.author.id})"
-
-        content = msg.content or ""
-        if msg.attachments:
-            content += " " + " ".join(a.url for a in msg.attachments)
-
-        lines.append(f"[{timestamp}] {author}: {content}")
-
-    return "\n".join(lines)
 
 class CloseButton(Button):
     def __init__(self):
@@ -321,47 +307,9 @@ class CloseButton(Button):
             await interaction.followup.send("You do not have permission to close this ticket.", ephemeral=True)
             return
 
-        channel = interaction.channel
-        logs_channel = interaction.guild.get_channel(ticket_config["logs_channel"])
-
-        await interaction.followup.send("🔒 Closing ticket and saving transcript...")
-
-        try:
-            # Generate transcript
-            transcript_text = await generate_transcript(channel)
-
-            # Create a text file from transcript
-            transcript_file = discord.File(
-                fp=io.StringIO(transcript_text),
-                filename=f"transcript-{channel.name}.txt"
-            )
-
-            # Send to logs channel
-            owner_id = ticket_owners.get(channel.id, "Unknown")
-
-            embed = discord.Embed(
-                title="📝 Ticket Transcript",
-                description=f"**Channel:** {channel.name}\n**Closed by:** {interaction.user.mention}\n**Owner ID:** {owner_id}",
-                color=discord.Color.red(),
-                timestamp=discord.utils.utcnow()
-            )
-
-            await logs_channel.send(embed=embed, file=transcript_file)
-
-        except Exception as e:
-            logger.error(f"Failed to create transcript: {e}")
-            
-        ticket_owners.pop(channel.id, None)
-
+        await interaction.followup.send("🔒 Closing ticket...")
         await asyncio.sleep(2)
-        await channel.delete()
-def find_existing_ticket(guild: discord.Guild, user_id: int) -> discord.TextChannel | None:
-    for channel_id, owner_id in ticket_owners.items():
-        if owner_id == user_id:
-            channel = guild.get_channel(channel_id)
-            if channel:  # still exists
-                return channel
-    return None
+        await interaction.channel.delete()
 
 class MainPanel(View):
     def __init__(self):
@@ -369,101 +317,61 @@ class MainPanel(View):
 
     @discord.ui.button(label="♛ Tier Test", style=discord.ButtonStyle.blurple, custom_id="panel_tier_btn")
     async def tier(self, interaction: discord.Interaction, button: Button):
-
-        if "category" not in ticket_config:
-            await interaction.response.send_message("Ticket system not configured.", ephemeral=True)
-            return
-
-        existing = find_existing_ticket(interaction.guild, interaction.user.id)
-        if existing:
-            await interaction.response.send_message(
-                f"❌ You already have an open ticket: {existing.mention}",
-                ephemeral=True
-            )
+        if "category" not in ticket_config or "staff_role" not in ticket_config or "logs_channel" not in ticket_config:
+            await interaction.response.send_message("Ticket system is not fully configured. Please ask an admin to run `/setup_tickets` with category, staff role, and logs channel.", ephemeral=True)
             return
 
         category = interaction.guild.get_channel(ticket_config["category"])
+        if not category:
+            await interaction.response.send_message("Configured category not found.", ephemeral=True)
+            return
 
+        channel_name = f"tier-test-{interaction.user.name}"
         overwrites = {
             interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
             interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
             interaction.guild.get_role(ticket_config["staff_role"]): discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            client.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+            client.user: discord.PermissionOverwrite(read_messages=True, send_messages=True, embed_links=True, attach_files=True),  # Added more permissions for embeds
         }
-
         try:
-            channel = await category.create_text_channel(
-                f"tier-test-{interaction.user.name}".lower().replace(" ", "-"),
-                overwrites=overwrites
-            )
-
-            ticket_owners[channel.id] = interaction.user.id
-
-            welcome_embed = discord.Embed(
-                title="🎫 Welcome to Your Tier Test Ticket!",
-                description=(
-                    f"Hello {interaction.user.mention}!\n\n"
-                    f"{random.choice(interesting_quotes)}\n\n"
-                    "Please select your Region and Mode below, then submit your request."
-                ),
-                color=discord.Color.blue(),
-                timestamp=discord.utils.utcnow()
-            )
-
-            await channel.send(embed=welcome_embed, view=TierTicketView())
-            await channel.send("", view=TicketButtons())
-
-            await interaction.response.send_message(
-                f"✅ Ticket created: {channel.mention}",
-                ephemeral=True
-            )
-
+            channel = await category.create_text_channel(channel_name, overwrites=overwrites)
         except Exception as e:
-            logger.error(e)
-            await interaction.response.send_message(
-                "Failed to create ticket.",
-                ephemeral=True
-            )
-
+            logger.error(f"Error creating ticket channel: {e}")
+            await interaction.response.send_message("Failed to create ticket channel. Check permissions or try again.", ephemeral=True)
+            return
 
         # Test sending a simple message first to check permissions
         try:
-            channel = await category.create_text_channel(channel_name, overwrites=overwrites)
-
-            # Test sending a simple message first to check permissions
             test_msg = await channel.send("Testing permissions...")
-            await test_msg.delete()
-
-            ticket_owners[channel.id] = interaction.user.id
-
-            welcome_embed = discord.Embed(
-                title="🎫 Welcome to Your Tier Test Ticket!",
-                description=f"Hello {interaction.user.mention}!\n\nPlease select your Region and Mode below and submit.\n\n{random.choice(interesting_quotes)}",
-                color=discord.Color.blue(),
-                timestamp=discord.utils.utcnow()
-            )
-
-            await channel.send(embed=welcome_embed, view=TierTicketView())
-            await channel.send("", view=TicketButtons())
-
-            await interaction.response.send_message(
-                f"✅ Ticket created: {channel.mention}\n\nHead over to the channel to proceed!",
-                ephemeral=True
-            )
-
-            logger.info(f"Ticket created by {interaction.user}: Channel {channel_name}")
-
+            await test_msg.delete()  # Delete test message
         except Exception as e:
-            logger.error(f"Error creating or setting up ticket channel: {e}")
-            await interaction.response.send_message(
-                "Ticket channel created, but setup failed. Check bot permissions.",
-                ephemeral=True
-            )
+            logger.error(f"Bot cannot send messages in ticket channel: {e}")
+            await interaction.response.send_message("Ticket channel created, but bot lacks send permissions. Check bot roles.", ephemeral=True)
+            return
+
+        ticket_owners[channel.id] = interaction.user.id
+
+        welcome_embed = discord.Embed(
+            title="🎫 Welcome to Your Tier Test Ticket!",
+            description=f"Hello {interaction.user.mention}!\n\nPlease select your Region and Mode below and submit.\n\n{random.choice(interesting_quotes)}",
+            color=discord.Color.blue(),
+            timestamp=discord.utils.utcnow()
+        )
+
+        await channel.send(embed=welcome_embed, view=TierTicketView())
+        await channel.send("Staff Controls:", view=TicketButtons())
+
+        await interaction.response.send_message(f"✅ Ticket created: {channel.mention}\n\nHead over to the channel to proceed!", ephemeral=True)
+
+        logger.info(f"Ticket created by {interaction.user}: Channel {channel_name}")
+        except Exception as e:
+            logger.error(f"Error sending embeds/views to ticket channel: {e}")
+            await interaction.response.send_message("Ticket channel created, but setup failed. Check the channel for issues.", ephemeral=True)
 
 @tree.command(name="panel", description="Send ticket panel", guild=discord.Object(id=GUILD_ID))
 async def panel(interaction: discord.Interaction):
     # Crazy hype text for the description
-    crazy_text = "**🚀 Test Your Tier! 🚀**\n\n**CRYSTAL PVP,NETHPOT,SMP,SWORD ARE AVAILABLE,TEST NOW!**\n\n**💥 TEST & Give Your Best! 💥**\n\n**Select your region, choose your mode, and LET'S GET THIS PARTY STARTED!**\n\n**🔥 WARNING: DON'T WASTE STAFF TIME! 🔥**"
+    crazy_text = "**🚀 Test Your Tier! 🚀**\n\n**CRYSTAL PVP,NETHPOT,SMP,SWORD ARE AVAILABLE,TEST NOW!**\n\n**💥 TEST & GET LOST 💥**\n\n**Select your region, choose your mode, and LET'S GET THIS PARTY STARTED!**\n\n**🔥 WARNING: DON'T WASTE STAFF TIME! 🔥**"
     
     # Fun PvP/Gaming GIF URL (replace with a working one if needed)
     gif_url = "https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif"  # Example: Replace with a real GIF URL like a fighting or gaming one
@@ -475,7 +383,7 @@ async def panel(interaction: discord.Interaction):
         timestamp=discord.utils.utcnow()
     )
     embed.set_image(url=gif_url)  # GIF as image
-    embed.set_footer(text="Test Your Tier ⤵︎", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+    embed.set_footer(text="**Get ready to CLASH!**", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
     
     await interaction.response.send_message(embed=embed, view=MainPanel())
 
