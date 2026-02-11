@@ -305,7 +305,6 @@ async def on_message(message):
             color=discord.Color.blue(),
             timestamp=discord.utils.utcnow()
         )
-
             embed.add_field(name="Username (MC + Discord)", value=answers[0], inline=False)
             embed.add_field(name="Age", value=answers[1], inline=False)
             embed.add_field(name="Region / Timezone", value=answers[2], inline=False)
