@@ -289,11 +289,8 @@ async def on_message(message):
             state['step'] = step
             await message.channel.send(f"**Question {step + 1}:** {questions[step]}")
         else:
+            # All answers collected
             del application_states[user_id]
-            # (rest of your embed code)
-
-    # 🔥 THIS IS THE MISSING LINE
-    await client.process_commands(message)
 
             embed = discord.Embed(
                 title="📝 New Staff Application",
@@ -301,20 +298,34 @@ async def on_message(message):
                 color=discord.Color.blue(),
                 timestamp=discord.utils.utcnow()
             )
-            embed.add_field(name="What is your Minecraft username and Discord username?", value=answers[0], inline=False)
-            embed.add_field(name="How old are you?", value=answers[1], inline=False)
-            embed.add_field(name="What region/timezone are you from?", value=answers[2], inline=False)
-            embed.add_field(name="How many hours can you be active daily for testing?", value=answers[3], inline=False)
-            embed.add_field(name="How long have you been playing Minecraft PvP?", value=answers[4], inline=False)
-            embed.add_field(name="Why do you want to become a Tier Tester in this server?", value=answers[5], inline=False)
-            embed.add_field(name="How would you handle a toxic player during a test?", value=answers[6], inline=False)
-            embed.add_field(name="Are you able to record your tests if required?", value=answers[7], inline=False)
-            embed.set_footer(text=f"Applicant ID: {user_id}", icon_url=message.author.avatar.url if message.author.avatar else None)
-            # Send to logs
+
+            embed.add_field(name="Username (MC + Discord)", value=answers[0], inline=False)
+            embed.add_field(name="Age", value=answers[1], inline=False)
+            embed.add_field(name="Region / Timezone", value=answers[2], inline=False)
+            embed.add_field(name="Gamemodes You Can Test", value=answers[3], inline=False)
+            embed.add_field(name="Daily Activity Hours", value=answers[4], inline=False)
+            embed.add_field(name="PvP Experience Duration", value=answers[5], inline=False)
+            embed.add_field(name="PvP Skill Rating", value=answers[6], inline=False)
+            embed.add_field(name="Previous Staff Experience", value=answers[7], inline=False)
+            embed.add_field(name="Why You Want To Be Tester", value=answers[8], inline=False)
+            embed.add_field(name="What Makes You Different", value=answers[9], inline=False)
+            embed.add_field(name="Handling Toxic Players", value=answers[10], inline=False)
+            embed.add_field(name="Handling Tier Accusations", value=answers[11], inline=False)
+            embed.add_field(name="Can You Record Tests?", value=answers[12], inline=False)
+            embed.add_field(name="Understands Abuse = Removal", value=answers[13], inline=False)
+            embed.add_field(name="Additional Information", value=answers[14], inline=False)
+
+            embed.set_footer(
+                text=f"Applicant ID: {user_id}",
+                icon_url=message.author.avatar.url if message.author.avatar else None
+            )
+
             logs_channel = client.get_channel(application_config["logs_channel"])
             staff_role = message.guild.get_role(application_config["staff_role"])
+
             if logs_channel and staff_role:
                 await logs_channel.send(f"{staff_role.mention}", embed=embed)
+
             await message.channel.send("✅ Your staff application has been submitted successfully.")
 
 # -------------------- COMMANDS --------------------
