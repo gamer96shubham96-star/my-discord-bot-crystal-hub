@@ -489,4 +489,9 @@ if __name__ == "__main__":
         client.run(TOKEN)
     except discord.HTTPException as e:
         if e.status == 429:
+            logger.error("Rate limit hit. Waiting before retry...")
+            asyncio.run(asyncio.sleep(60))
+            client.run(TOKEN)
+        else:
+            raise
            
