@@ -438,7 +438,44 @@ async def tier(
     result: app_commands.Choice[str],
 ):
     # Exact custom formatted result message as requested, with enhanced markdown
-    result_text = f"""|| @everyone || ## ⛨ Crystal Hub {mode.value} Tier • TIER RESULTS ⛨ ### ⚚ Tester {tester.mention} ### ◈ Candidate {user.mention} ### :earth_africa: Region {region.value} ### ⛨ Gamemode {mode.value} ### ⌬ Account Type {account.value} ------------------ ### ⬖ Previous Tier **{previous_tier}** --- ### ⬗ Tier Achieved **{earned_tier}** --- ### ✦ Match Score {score} ------------------ ## ⛨ RESULT: {result.value} ⛨ ### Think you can outperform this result? Test again in 1 month! """
+    result_text = f"""
+|| @everyone ||
+
+## ⛨ Crystal Hub {mode.value} Tier • OFFICIAL TIER RESULTS ⛨
+
+### ⚚ Tester
+{tester.mention}
+
+### ◈ Candidate
+{user.mention}
+
+### 🌍 Region
+{region.value}
+
+### ⛨ Gamemode
+{mode.value}
+
+### ⌬ Account Type
+{account.value}
+
+━━━━━━━━━━━━━━━━━━
+
+### ⬖ Previous Tier
+**{previous_tier}**
+
+### ⬗ Tier Achieved
+**{earned_tier}**
+
+### ✦ Match Score
+**{score}**
+
+━━━━━━━━━━━━━━━━━━
+
+## ⛨ RESULT: **{result.value}** ⛨
+
+**Think you can outperform this result?**  
+Test again in **1 month!**
+"""
     # Create embed with the text as description and GIF as image
     embed = discord.Embed(description=result_text, color=discord.Color.gold())
     embed.set_image(url="https://media.giphy.com/media/oWWA8hYwrlk8Yrp6lo/giphy.gif")
@@ -468,6 +505,17 @@ async def setup_tickets(
     # Log the setup
     logger.info(f"Ticket system configured by {interaction.user}: Category {category.name}, Staff Role {staff_role.name}, Logs Channel {logs_channel.name}")
     save_config()
+
+@tree.command(name="tier_panel", description="Tier Test Panel", guild=discord.Object(id=GUILD_ID))
+@app_commands.checks.has_permissions(administrator=True)
+async def send_tier_panel(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="🎫 Tier Test Panel",
+        description="Select your **Region** and **Gamemode**, then press **Submit Request**.",
+        color=discord.Color.orange()
+    )
+    await interaction.channel.send(embed=embed, view=TierTicketView())
+    await interaction.response.send_message("✅ Tier panel sent!", ephemeral=True)
 
 @tree.command(name="setup_applications", description="Setup application system", guild=discord.Object(id=GUILD_ID))
 @app_commands.checks.has_permissions(administrator=True)
