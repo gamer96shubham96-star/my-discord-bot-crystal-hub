@@ -156,13 +156,6 @@ class MainPanel(discord.ui.View):
             ephemeral=True
         )
 
-        except Exception as e:
-            logger.error(e)
-            await interaction.response.send_message(
-                "Failed to create ticket.",
-                ephemeral=True
-            )
-
             # Test sending a simple message first to check permissions
             test_msg = await channel.send("Testing permissions...")
             await test_msg.delete()
