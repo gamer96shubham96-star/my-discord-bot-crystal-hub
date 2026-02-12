@@ -164,61 +164,71 @@ class MainPanel(discord.ui.View):
         embed.set_image(url="https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif")
         embed.set_footer(text=f"User ID: {interaction.user.id}")
 
-        await channel.send(embed=embed, view=TierFormButton(channel.id))
+        await channel.send(embed=embed, view=TierFormView(channel.id))
         await channel.send(view=TicketButtons())
 
         await interaction.response.send_message(
             f"✅ Your Tier Test ticket has been created: {channel.mention}",
             ephemeral=True
         )
-class TierFormButton(discord.ui.View):
+class TierFormView(discord.ui.View):
     def __init__(self, channel_id: int):
         super().__init__(timeout=None)
         self.channel_id = channel_id
 
-    @discord.ui.button(label="📝 Tier Test Form", style=discord.ButtonStyle.success, custom_id="tier_form_btn")
-    async def on_submit(self, interaction: discord.Interaction):
-    tier_filled[self.parent_view.channel_id] = True
+    @discord.ui.button(
+        label="📝 Tier Test Form",
+        style=discord.ButtonStyle.success,
+        custom_id="tier_form_open"
+    )
+    async def open_form(self, interaction: discord.Interaction, button: discord.ui.Button):
 
-    embed = discord.Embed(title="📋 Tier Test Submission", color=discord.Color.green())
-    for item in self.children:
-        embed.add_field(name=item.label, value=item.value, inline=False)
+        if tier_filled.get(self.channel_id):
+            await interaction.response.send_message("✅ Form already submitted.", ephemeral=True)
+            return
 
-    await interaction.channel.send(embed=embed)
-
-    # disable button PROPERLY
-    for child in self.parent_view.children:
-        child.disabled = True
-
-    await interaction.channel.send(view=self.parent_view)
-
-    await interaction.response.send_message("Tier Form Submitted.✅", ephemeral=True)
+        await interaction.response.send_modal(TierModal(self))
 
 class TierModal(discord.ui.Modal, title="Tier Test Form"):
-    def __init__(self, parent_view: TierFormButton):
+
+    def __init__(self, parent_view: TierFormView):
         super().__init__()
         self.parent_view = parent_view
 
-        self.add_item(TextInput(label="Minecraft + Discord Username"))
-        self.add_item(TextInput(label="Age"))
-        self.add_item(TextInput(label="Region"))
-        self.add_item(TextInput(label="Gamemode"))
+        self.username = TextInput(label="Minecraft + Discord Username")
+        self.age = TextInput(label="Age")
+        self.region = TextInput(label="Region")
+        self.gamemode = TextInput(label="Gamemode")
+
+        self.add_item(self.username)
+        self.add_item(self.age)
+        self.add_item(self.region)
+        self.add_item(self.gamemode)
 
     async def on_submit(self, interaction: discord.Interaction):
+
         tier_filled[self.parent_view.channel_id] = True
 
-        embed = discord.Embed(title="📋 Tier Test Submission", color=discord.Color.green())
-        for item in self.children:
-            embed.add_field(name=item.label, value=item.value, inline=False)
+        embed = discord.Embed(
+            title="📋 Tier Test Submission",
+            color=discord.Color.green()
+        )
+
+        embed.add_field(name="Username", value=self.username.value, inline=False)
+        embed.add_field(name="Age", value=self.age.value, inline=False)
+        embed.add_field(name="Region", value=self.region.value, inline=False)
+        embed.add_field(name="Gamemode", value=self.gamemode.value, inline=False)
 
         await interaction.channel.send(embed=embed)
 
-        # disable button
+        # disable button forever
         for child in self.parent_view.children:
             child.disabled = True
 
-        await interaction.message.edit(view=self.parent_view)
-        await interaction.response.send_message("Tier Form Submitted.✅", ephemeral=True)
+        await interaction.channel.send(view=self.parent_view)
+
+        await interaction.response.send_message("✅ Tier form submitted.", ephemeral=True)
+
 
 #---------------------------------------------------------------------------------------
 class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Staff Application"):
@@ -435,7 +445,6 @@ async def on_ready():
     client.add_view(MainPanel())
     client.add_view(TicketButtons())
     client.add_view(ApplicationPanel())
-    client.add_view(TierFormButton(0))  # dummy id for persistence
 
     asyncio.create_task(auto_close_task())
     asyncio.create_task(warn_checker())
