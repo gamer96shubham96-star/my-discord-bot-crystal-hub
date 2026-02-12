@@ -103,73 +103,70 @@ async def auto_close_task():
             await channel.delete()
 
 # -------------------- PERSISTENT COMPONENTS --------------------
-
-class MainPanel(View):
+class MainPanel(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-@discord.ui.button(label="♛ Tier Test", style=discord.ButtonStyle.blurple, custom_id="panel_tier_btn")
-async def tier(self, interaction: discord.Interaction, button: Button):
-
-    if "category" not in ticket_config:
-        await interaction.response.send_message("Ticket system not configured.", ephemeral=True)
-        return
-
-    existing = find_existing_ticket(interaction.guild, interaction.user.id)
-    if existing:
-        await interaction.response.send_message(
-            f"You already have a ticket: {existing.mention}",
-            ephemeral=True
-        )
-        return
-
-    category = interaction.guild.get_channel(ticket_config["category"])
-    staff_role = interaction.guild.get_role(ticket_config["staff_role"])
-
-    overwrites = {
-        interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
-        interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-        staff_role: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-    }
-
-    channel = await category.create_text_channel(
-        f"tier-{interaction.user.name}".lower().replace(" ", "-"),
-        overwrites=overwrites
+    @discord.ui.button(
+        label="♛ Start Tier Test",
+        style=discord.ButtonStyle.blurple,
+        custom_id="panel_tier_btn"
     )
+    async def tier(self, interaction: discord.Interaction, button: discord.ui.Button):
 
-    ticket_owners[channel.id] = interaction.user.id
-
-    embed = discord.Embed(
-        title="🎫 Tier Test Ticket",
-        description="Click the button below and fill the form.",
-        color=discord.Color.blue()
-    )
-
-    await channel.send(embed=embed, view=TierFormButton())
-    await channel.send(view=TicketButtons())
-
-    await interaction.response.send_message(
-        f"Ticket created: {channel.mention}",
-        ephemeral=True
-    )
-     await channel.send(view=TierFormButton())
-            welcome_embed = discord.Embed(
-                title="🎫 Welcome to Your Tier Test Ticket!",
-                description=(
-                    f"Hello {interaction.user.mention}!\n\n"
-                    f"{random.choice(interesting_quotes)}\n\n"
-                    "Please select your Region and Mode below, then submit your request."
-                ),
-                color=discord.Color.blue(),
-                timestamp=discord.utils.utcnow()
-            )
-
-            await channel.send("", view=TicketButtons())
-
+        if "category" not in ticket_config:
             await interaction.response.send_message(
-                f"✅ Ticket created: {channel.mention}",
+                "Ticket system not configured.",
                 ephemeral=True
             )
+            return
+
+        # Check existing ticket
+        existing = find_existing_ticket(interaction.guild, interaction.user.id)
+        if existing:
+            await interaction.response.send_message(
+                f"You already have a ticket: {existing.mention}",
+                ephemeral=True
+            )
+            return
+
+        category = interaction.guild.get_channel(ticket_config["category"])
+        staff_role = interaction.guild.get_role(ticket_config["staff_role"])
+
+        overwrites = {
+            interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True),
+            staff_role: discord.PermissionOverwrite(view_channel=True, send_messages=True),
+        }
+
+        # Create channel
+        channel = await category.create_text_channel(
+            name=f"tier-{interaction.user.name}".lower().replace(" ", "-"),
+            overwrites=overwrites
+        )
+
+        ticket_owners[channel.id] = interaction.user.id
+
+        # Professional welcome embed
+        embed = discord.Embed(
+            title="🎫 Crystal Hub • Tier Test Ticket",
+            description=(
+                f"Welcome {interaction.user.mention}\n\n"
+                "Click the button below and fill the **Tier Test Form**."
+            ),
+            color=discord.Color.blue(),
+            timestamp=discord.utils.utcnow()
+        )
+
+        embed.set_image(url="https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif")
+
+        await channel.send(embed=embed, view=TierFormButton())
+        await channel.send(view=TicketButtons())
+
+        await interaction.response.send_message(
+            f"✅ Ticket created: {channel.mention}",
+            ephemeral=True
+        )
 
         except Exception as e:
             logger.error(e)
