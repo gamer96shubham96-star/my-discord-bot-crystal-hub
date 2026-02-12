@@ -171,6 +171,19 @@ class MainPanel(discord.ui.View):
             f"✅ Your Tier Test ticket has been created: {channel.mention}",
             ephemeral=True
         )
+class TierFormButton(discord.ui.View):
+    def __init__(self, channel_id: int):
+        super().__init__(timeout=None)
+        self.channel_id = channel_id
+
+    @discord.ui.button(label="📝 Tier Test Form", style=discord.ButtonStyle.success, custom_id="tier_form_btn")
+    async def open_form(self, interaction: discord.Interaction, button: discord.ui.Button):
+
+        if tier_filled.get(self.channel_id):
+            await interaction.response.send_message("Form already submitted.", ephemeral=True)
+            return
+
+        await interaction.response.send_modal(TierModal(self))
 
 class TierModal(discord.ui.Modal, title="Tier Test Form"):
     def __init__(self, parent_view: TierFormButton):
@@ -198,17 +211,6 @@ class TierModal(discord.ui.Modal, title="Tier Test Form"):
         await interaction.message.edit(view=self.parent_view)
         await interaction.response.send_message("Tier Form Submitted.✅", ephemeral=True)
 
-class TierFormButton(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-
-    @discord.ui.button(
-        label="📝 Tier Test Form",
-        style=discord.ButtonStyle.success,
-        custom_id="tier_form_btn"
-    )
-    async def open_form(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(TierModal())
 #---------------------------------------------------------------------------------------
 class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Staff Application"):
 
