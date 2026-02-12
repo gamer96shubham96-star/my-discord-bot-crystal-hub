@@ -5,83 +5,38 @@ import discord
 from discord import app_commands
 from discord.ui import View, Button, Modal, TextInput
 from dotenv import load_dotenv
-import logging
-import random
 import datetime
+import json
 
-# Set up logging for better debugging and professionalism
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Load environment variables
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
-GUILD_ID = int(os.getenv("GUILD_ID", "1466825673384394824"))
+GUILD_ID = int(os.getenv("GUILD_ID"))
 
-# Intents
-intents = discord.Intents.default()
-intents.members = True
-intents.message_content = True
-
-# Client and tree
+intents = discord.Intents.all()
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
-# Global configurations and data
-ticket_config: dict[str, int] = {}
-application_config: dict[str, int] = {}
-ticket_owners: dict[int, int] = {}  # channel_id -> user_id
-user_selections: dict[tuple[int, int], dict] = {}  # Key: (user_id, channel_id), Value: {'region': str, 'mode': str}
-ticket_counter = 1
-last_activity: dict[int, float] = {}  # channel_id -> timestamp
-application_states: dict[int, dict] = {}  # user_id -> {'step': int, 'answers': list[str]}
-
-# List of interesting quotes for flair in tickets
-interesting_quotes = [
-    "Shubham96 Is The Best Cpvp Tester!",
-    "qbhishekyt_11 is The Best Nethpot Tester!",
-    "Tier Is A Identity Of A Fighter!",
-    "Test Tier Wake Earlier!",
-    "Subscribe-https://www.youtube.com/@Shubham96Official"
-]
-
-# Questions for staff applications
-questions = [
-    "Username (Minecraft + Discord)?",
-    "How old are you?",
-    "What is your Region / Timezone?",
-    "What gamemodes can you test? (Crystal, NethPot, SMP, Sword)",
-    "How many hours can you give daily?",
-    "How long have you been doing PvP?",
-    "Rate your PvP skill from 1-10",
-    "Do you have previous staff experience? If yes, where?",
-    "Why do you want to become a Tester?",
-    "What makes you different from other applicants?",
-    "How would you handle toxic players during tests?",
-    "How would you handle false tier accusations?",
-    "Can you record your tests? (Yes/No)",
-    "Do you understand abuse = instant removal? (Yes/No)",
-    "Any additional information?"
-]
-
 CONFIG_FILE = "config.json"
 
-import json
+ticket_config = {}
+application_config = {}
+ticket_owners = {}
+warn_waiting = {}
+last_activity = {}
 
 def save_config():
     with open(CONFIG_FILE, "w") as f:
         json.dump({
-            "ticket_config": ticket_config,
-            "application_config": application_config
+            "ticket": ticket_config,
+            "application": application_config
         }, f)
 
 def load_config():
-    global ticket_config, application_config
     if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, "r") as f:
+        with open(CONFIG_FILE) as f:
             data = json.load(f)
-            ticket_config.update(data.get("ticket_config", {}))
-            application_config.update(data.get("application_config", {}))
+            ticket_config.update(data.get("ticket", {}))
+            application_config.update(data.get("application", {}))
 
 # -------------------- FUNCTIONS --------------------
 
@@ -253,26 +208,18 @@ async def tier(self, interaction: discord.Interaction, button: Button):
                 ephemeral=True
             )
 
-class TierRequestModal(discord.ui.Modal, title="Tier Test Request Form"):
-
-    mc_discord = TextInput(label="Minecraft & Discord Username")
+class TierModal(Modal, title="Tier Test Form"):
+    mc = TextInput(label="Minecraft + Discord Username")
     age = TextInput(label="Age")
     region = TextInput(label="Region")
     mode = TextInput(label="Gamemode")
-    hours = TextInput(label="Daily Hours")
 
     async def on_submit(self, interaction: discord.Interaction):
-
-        embed = discord.Embed(
-            title="📋 Tier Test Submission",
-            color=discord.Color.green()
-        )
-
+        embed = discord.Embed(title="📋 Tier Test Request", color=discord.Color.green())
         for item in self.children:
             embed.add_field(name=item.label, value=item.value, inline=False)
-
         await interaction.channel.send(embed=embed)
-        await interaction.response.send_message("✅Staff Application Submitted.", ephemeral=True)
+        await interaction.response.send_message("Submitted.", ephemeral=True)
         # Clear selections
         # Open modal for detailed questions
         await interaction.response.send_modal(TierTestModal())
@@ -529,17 +476,11 @@ class CloseButton(Button):
 @client.event
 async def on_ready():
     load_config()
-    guild = discord.Object(id=GUILD_ID)
-    # Sync commands globally first, then to the specific guild for faster updates
-    await tree.sync()
-    tree.copy_global_to(guild=guild)
-    await tree.sync(guild=guild)
-    # Add persistent views to handle interactions even after restart
-    client.add_view(MainPanel())
-    client.add_view(TicketButtons())
+    client.add_view(PanelView())
+    client.add_view(TicketView())
     asyncio.create_task(warn_checker())
-    asyncio.create_task(auto_close_task())
-    logger.info(f"✅ Logged in as {client.user}")
+    await tree.sync(guild=discord.Object(id=GUILD_ID))
+    print("✅Bot Ready")
 
 @client.event
 async def on_message(message):
@@ -651,11 +592,10 @@ async def warn_checker():
             if now > data["end"]:
                 channel = client.get_channel(cid)
                 member = channel.guild.get_member(data["user"])
-
                 await member.timeout(datetime.timedelta(hours=1))
-                await channel.delete()
+                await close_ticket(channel, client.user)
                 del warn_waiting[cid]
-
+                
 @tree.command(name="tier", description="Post official tier result", guild=discord.Object(id=GUILD_ID))
 @app_commands.describe(
     tester="Tester",
