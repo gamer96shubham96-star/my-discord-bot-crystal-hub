@@ -197,7 +197,6 @@ async def tier(self, interaction: discord.Interaction, button: Button):
         f"Ticket created: {channel.mention}",
         ephemeral=True
     )
-    
      await channel.send(view=TierFormButton())
             welcome_embed = discord.Embed(
                 title="🎫 Welcome to Your Tier Test Ticket!",
