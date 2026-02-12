@@ -187,7 +187,11 @@ class MainPanel(View):
 
             await channel.send(view=TicketButtons())
 
-            await interaction.response.send_modal(TierRequestModal())
+await interaction.response.send_message(
+    "✅ Ticket created. Please fill the form below.",
+    ephemeral=True
+)
+await channel.send(view=TierFormButton())
 
             welcome_embed = discord.Embed(
                 title="🎫 Welcome to Your Tier Test Ticket!",
@@ -200,7 +204,6 @@ class MainPanel(View):
                 timestamp=discord.utils.utcnow()
             )
 
-            await channel.send(embed=welcome_embed, view=TierTicketView())
             await channel.send("", view=TicketButtons())
 
             await interaction.response.send_message(
@@ -214,11 +217,6 @@ class MainPanel(View):
                 "Failed to create ticket.",
                 ephemeral=True
             )
-
-
-        # Test sending a simple message first to check permissions
-        try:
-            channel = await category.create_text_channel(channel_name, overwrites=overwrites)
 
             # Test sending a simple message first to check permissions
             test_msg = await channel.send("Testing permissions...")
@@ -258,21 +256,22 @@ class TierRequestModal(discord.ui.Modal, title="Tier Test Request Form"):
     mode = TextInput(label="Gamemode (Crystal / NethPot / SMP / Sword)", max_length=20)
     hours = TextInput(label="Hours Available Daily", max_length=10)
 
-    async def on_submit(self, interaction: discord.Interaction):
-        embed = discord.Embed(
-            title="📋 Tier Test Request",
-            color=discord.Color.blue(),
-            timestamp=discord.utils.utcnow()
-        )
+async def on_submit(self, interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="📋 Tier Test Request",
+        color=discord.Color.blue(),
+        timestamp=discord.utils.utcnow()
+    )
 
-        embed.add_field(name="User", value=interaction.user.mention, inline=False)
-        embed.add_field(name="MC + Discord", value=self.mc_discord.value, inline=False)
-        embed.add_field(name="Age", value=self.age.value, inline=True)
-        embed.add_field(name="Region", value=self.region.value, inline=True)
-        embed.add_field(name="Gamemode", value=self.mode.value, inline=True)
-        embed.add_field(name="Daily Hours", value=self.hours.value, inline=True)
+    embed.add_field(name="User", value=interaction.user.mention, inline=False)
+    embed.add_field(name="MC + Discord", value=self.mc_discord.value, inline=False)
+    embed.add_field(name="Age", value=self.age.value, inline=True)
+    embed.add_field(name="Region", value=self.region.value, inline=True)
+    embed.add_field(name="Gamemode", value=self.mode.value, inline=True)
+    embed.add_field(name="Daily Hours", value=self.hours.value, inline=True)
 
-        await interaction.response.send_message(embed=embed)
+    await interaction.channel.send(embed=embed)
+    await interaction.response.send_message("✅ Form submitted.", ephemeral=True)
         # Clear selections
         # Open modal for detailed questions
         await interaction.response.send_modal(TierTestModal())
@@ -363,7 +362,14 @@ class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Tester Staf
             ephemeral=True
         )
 
+class TierFormButton(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
 
+    @discord.ui.button(label="Fill Tier Test Form", style=discord.ButtonStyle.blurple)
+    async def open_form(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(TierRequestModal())
+    
 # ================= REJECT REASON MODAL =================
 
 class RejectReasonModal(discord.ui.Modal, title="Application Rejection Reason"):
@@ -519,7 +525,6 @@ async def on_ready():
     await tree.sync(guild=guild)
     # Add persistent views to handle interactions even after restart
     client.add_view(MainPanel())
-    client.add_view(TierTicketView())
     client.add_view(TicketButtons())
     asyncio.create_task(auto_close_task())
     logger.info(f"✅ Logged in as {client.user}")
