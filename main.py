@@ -172,10 +172,10 @@ class TierModal(Modal, title="Tier Test Form"):
     region = TextInput(label="Region")
     mode = TextInput(label="Gamemode")
 
-async def on_submit(self, interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=True)
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
         if interaction.channel.id not in ticket_owners:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "This form can only be used inside a ticket.",
                 ephemeral=True
             )
@@ -223,36 +223,36 @@ class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Staff Appli
         style=discord.TextStyle.paragraph
     )
 
-async def on_submit(self, interaction: discord.Interaction):
+    async def on_submit(self, interaction: discord.Interaction):
 
-    await interaction.response.defer(ephemeral=True)  # <<< THIS FIXES IT
+        await interaction.response.defer(ephemeral=True)
 
-    embed = discord.Embed(
-        title="📝 Crystal Hub • New Staff Application",
-        color=discord.Color.blue(),
-        timestamp=discord.utils.utcnow()
-    )
+        embed = discord.Embed(
+            title="📝 Crystal Hub • New Staff Application",
+            color=discord.Color.blue(),
+            timestamp=discord.utils.utcnow()
+        )
 
-    embed.add_field(name="Applicant", value=interaction.user.mention, inline=False)
+        embed.add_field(name="Applicant", value=interaction.user.mention, inline=False)
 
-    for item in self.children:
-        embed.add_field(name=item.label, value=item.value, inline=False)
+        for item in self.children:
+            embed.add_field(name=item.label, value=item.value, inline=False)
 
-    embed.set_footer(
-        text=f"Applicant ID: {interaction.user.id}",
-        icon_url=interaction.user.display_avatar.url
-    )
+        embed.set_footer(
+            text=f"Applicant ID: {interaction.user.id}",
+            icon_url=interaction.user.display_avatar.url
+        )
 
-    logs = interaction.guild.get_channel(application_config["logs_channel"])
-    view = ApplicationReviewView(interaction.user.id)
+        logs = interaction.guild.get_channel(application_config["logs_channel"])
+        view = ApplicationReviewView(interaction.user.id)
 
-    if logs:
-        await logs.send(embed=embed, view=view)
+        if logs:
+            await logs.send(embed=embed, view=view)
 
-    await interaction.followup.send(
-        "✅ Your application has been submitted to Crystal Hub Staff Team.",
-        ephemeral=True
-    )
+        await interaction.followup.send(
+            "✅ Your application has been submitted to Crystal Hub Staff Team.",
+            ephemeral=True
+        )
 
 class TierFormButton(discord.ui.View):
     def __init__(self):
@@ -556,6 +556,4 @@ async def setup_tickets(
 @tree.command(name="panel", description="Send ticket panel", guild=discord.Object(id=GUILD_ID))
 async def panel(interaction: discord.Interaction):
     # Crazy hype text for the description
-    crazy_text = "**🚀 Test Your Tier! 🚀**\n\n**CRYSTAL PVP,NETHPOT,SMP,SWORD ARE AVAILABLE,TEST NOW!**\n\n**💥 TEST & Give Your Best! 💥**\n\n**Select your region, choose your mode, and LET'S GET THIS PARTY STARTED!**\n\n**🔥 WARNING: DON'T WASTE STAFF TIME! 🔥**"
-
-    # Fun PvP/Gaming GIF URL (replace with a working
+    crazy_text = "**🚀 Test Your Tier! 🚀**\n\n**CRYSTAL PVP,NETHPOT,SMP,SWORD ARE AVAILABLE,TEST NOW!**\n\n**💥 TEST & Give Your Best! 💥**\n\n**Select your region, choose your mode, and LET'S GET THIS PARTY STARTED!**\n\n**🔥 WARNING: DON'T
