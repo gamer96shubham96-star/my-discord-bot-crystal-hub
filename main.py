@@ -81,16 +81,19 @@ async def auto_close_task():
 
             try:
                 transcript_text = await generate_transcript(channel)
-transcript_file = discord.File(
-    fp=io.BytesIO(transcript_text.encode()),
-    filename=f"transcript-{channel.name}.txt"
-)
+
+                transcript_file = discord.File(
+                    fp=io.BytesIO(transcript_text.encode()),
+                    filename=f"transcript-{channel.name}.txt"
+                )
 
                 owner_id = ticket_owners.get(cid, "Unknown")
 
                 embed = discord.Embed(
                     title="📝 Ticket Transcript",
-                    description=f"**Channel:** {channel.name}\n**Closed by:** Auto-close (inactive)\n**Owner ID:** {owner_id}",
+                    description=f"**Channel:** {channel.name}\n"
+                                f"**Closed by:** Auto-close (inactive)\n"
+                                f"**Owner ID:** {owner_id}",
                     color=discord.Color.red(),
                     timestamp=discord.utils.utcnow()
                 )
