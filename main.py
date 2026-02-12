@@ -111,16 +111,16 @@ class MainPanel(discord.ui.View):
         super().__init__(timeout=None)
 
     @discord.ui.button(
-        label="♛ Start Tier Test",
+        label="🎫 Start Tier Test",
         style=discord.ButtonStyle.blurple,
-        custom_id="panel_tier_btn"
+        custom_id="crystalhub_tier_start"
     )
-    async def tier(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def start_tier(self, interaction: discord.Interaction, button: discord.ui.Button):
 
         existing = find_existing_ticket(interaction.guild, interaction.user.id)
         if existing:
             await interaction.response.send_message(
-                f"You already have a ticket: {existing.mention}",
+                f"❌ You already have an open ticket: {existing.mention}",
                 ephemeral=True
             )
             return
@@ -135,49 +135,36 @@ class MainPanel(discord.ui.View):
         }
 
         channel = await category.create_text_channel(
-            name=f"tier-{interaction.user.name}",
+            name=f"tier-{interaction.user.name}".lower().replace(" ", "-"),
             overwrites=overwrites
         )
 
         ticket_owners[channel.id] = interaction.user.id
+        last_activity[channel.id] = discord.utils.utcnow().timestamp()
 
+        # PROFESSIONAL TICKET EMBED
         embed = discord.Embed(
             title="🎫 Crystal Hub • Tier Test Ticket",
-            description=f"{interaction.user.mention}\n\nClick below and submit your Tier Test form.",
+            description=(
+                f"Welcome {interaction.user.mention}\n\n"
+                "**Please click the button below and fill your Tier Test Form carefully.**\n\n"
+                "⚠️ Do not waste staff time.\n"
+                "⚠️ Provide correct information."
+            ),
             color=discord.Color.blurple(),
+            timestamp=discord.utils.utcnow()
         )
+
         embed.set_image(url="https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif")
+        embed.set_footer(text=f"User ID: {interaction.user.id}")
 
         await channel.send(embed=embed, view=TierFormButton())
         await channel.send(view=TicketButtons())
 
         await interaction.response.send_message(
-            f"✅ Ticket created: {channel.mention}",
+            f"✅ Your Tier Test ticket has been created: {channel.mention}",
             ephemeral=True
         )
-
-            # Test sending a simple message first to check permissions
-            test_msg = await channel.send("Testing permissions...")
-            await test_msg.delete()
-
-            ticket_owners[channel.id] = interaction.user.id
-
-            welcome_embed = discord.Embed(
-                title="🎫 Welcome to Your Tier Test Ticket!",
-                description=f"Hello {interaction.user.mention}!\n\nPlease select your Region and Mode below and submit.\n\n{random.choice(interesting_quotes)}",
-                color=discord.Color.blue(),
-                timestamp=discord.utils.utcnow()
-            )
-
-            await channel.send(embed=welcome_embed, view=TierTicketView())
-            await channel.send("", view=TicketButtons())
-
-            await interaction.response.send_message(
-                f"✅ Ticket created: {channel.mention}\n\nHead over to the channel to proceed!",
-                ephemeral=True
-            )
-
-            logger.info(f"Ticket created by {interaction.user}: Channel {channel_name}")
 
 class TierModal(Modal, title="Tier Test Form"):
     mc = TextInput(label="Minecraft + Discord Username")
