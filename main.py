@@ -27,6 +27,7 @@ application_config = {}
 ticket_owners = {}
 warn_waiting = {}
 tier_filled = {}
+active_applications = {}
 last_activity = {}
 
 def save_config():
@@ -177,35 +178,35 @@ class TierModal(Modal, title="Tier Test Form"):
     region = TextInput(label="Region")
     mode = TextInput(label="Gamemode")
 
-async def on_submit(self, interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=True)
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
 
-    channel_id = interaction.channel.id
+        channel_id = interaction.channel.id
 
-    if tier_filled.get(channel_id):
-        await interaction.followup.send("Form already submitted in this ticket.", ephemeral=True)
-        return
+        if tier_filled.get(channel_id):
+            await interaction.followup.send("Form already submitted in this ticket.", ephemeral=True)
+            return
 
-    tier_filled[channel_id] = True
+        tier_filled[channel_id] = True
 
-    embed = discord.Embed(
-        title="📋 Tier Test Submission",
-        color=discord.Color.green(),
-        timestamp=discord.utils.utcnow()
-    )
+        embed = discord.Embed(
+            title="📋 Tier Test Submission",
+            color=discord.Color.green(),
+            timestamp=discord.utils.utcnow()
+        )
 
-    for item in self.children:
-        embed.add_field(name=item.label, value=item.value, inline=False)
+        for item in self.children:
+            embed.add_field(name=item.label, value=item.value, inline=False)
 
-    await interaction.channel.send(embed=embed)
+        await interaction.channel.send(embed=embed)
 
-    # REMOVE THE BUTTON MESSAGE (the form button)
-    async for msg in interaction.channel.history(limit=20):
-        if msg.components:
-            await msg.delete()
-            break
+        # delete the form button message
+        async for msg in interaction.channel.history(limit=20):
+            if msg.components:
+                await msg.delete()
+                break
 
-    await interaction.followup.send("✅ Tier form submitted.", ephemeral=True)
+        await interaction.followup.send("✅ Tier form submitted.", ephemeral=True)
 #---------------------------------------------------------------------------------------
 class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Staff Application"):
 
@@ -239,10 +240,26 @@ class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Staff Appli
 
     async def on_submit(self, interaction: discord.Interaction):
 
+        if "logs_channel" not in application_config:
+            await interaction.response.send_message(
+                "Applications are not configured yet.",
+                ephemeral=True
+            )
+            return
+
+        if active_applications.get(interaction.user.id):
+            await interaction.response.send_message(
+                "You already have a pending application.",
+                ephemeral=True
+            )
+            return
+
+        active_applications[interaction.user.id] = True
         await interaction.response.defer(ephemeral=True)
 
         embed = discord.Embed(
-            title="📝 Crystal Hub • New Staff Application",
+            title="📝 Crystal Hub • Staff Tester Application",
+            description="A new professional staff application has been submitted.",
             color=discord.Color.blue(),
             timestamp=discord.utils.utcnow()
         )
@@ -252,19 +269,15 @@ class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Staff Appli
         for item in self.children:
             embed.add_field(name=item.label, value=item.value, inline=False)
 
-        embed.set_footer(
-            text=f"Applicant ID: {interaction.user.id}",
-            icon_url=interaction.user.display_avatar.url
-        )
+        embed.set_image(url="https://media.giphy.com/media/QBd2kLB5qDmysEXre9/giphy.gif")
 
         logs = interaction.guild.get_channel(application_config["logs_channel"])
         view = ApplicationReviewView(interaction.user.id)
 
-        if logs:
-            await logs.send(embed=embed, view=view)
+        await logs.send(embed=embed, view=view)
 
         await interaction.followup.send(
-            "✅ Your Staff application has been submitted to Crystal Hub Staff Team.",
+            "✅ Your application has been submitted to Crystal Hub Staff.",
             ephemeral=True
         )
 
@@ -296,6 +309,8 @@ class RejectReasonModal(discord.ui.Modal, title="Application Rejection Reason"):
 
     async def on_submit(self, interaction: discord.Interaction):
         user = interaction.guild.get_member(self.applicant_id)
+        
+    active_applications.pop(self.applicant_id, None)
 
         try:
             await user.send(
@@ -351,6 +366,7 @@ class ApplicationReviewView(discord.ui.View):
         self.handled = True
         await self.disable_all(interaction)
         await interaction.response.send_modal(RejectReasonModal(self.applicant_id))
+        active_applications.pop(self.applicant_id, None)
 
 # ================= APPLICATION PANEL =================
 
@@ -377,7 +393,7 @@ class TicketButtons(discord.ui.View):
             await interaction.response.send_message("Staff only.", ephemeral=True)
             return
 
-        await interaction.channel.edit(name=f"claimed-{interaction.user.name}")
+        await interaction.channel.edit(name=f"claimed✅{interaction.user.name}")
         button.disabled = True
         await interaction.message.edit(view=self)
         await interaction.response.send_message("✅ Ticket claimed.", ephemeral=True)
@@ -386,22 +402,22 @@ class TicketButtons(discord.ui.View):
     async def warn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_message("Use `/warn @user minutes reason`", ephemeral=True)
 
-@discord.ui.button(label="🔒 Close Ticket", style=discord.ButtonStyle.danger, custom_id="close_ticket")
-async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(label="🔒 Close Ticket", style=discord.ButtonStyle.danger, custom_id="close_ticket")
+    async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
 
-    msg = await interaction.channel.send("🔒 Closing ticket in 2 seconds...")
-    await asyncio.sleep(2)
+        await interaction.channel.send("🔒 Closing ticket in 2 seconds...")
+        await asyncio.sleep(2)
 
-    logs_id = ticket_config.get("logs_channel")
-    logs = interaction.guild.get_channel(logs_id)
+        logs_id = ticket_config.get("logs_channel")
+        logs = interaction.guild.get_channel(logs_id)
 
-    transcript_text = await generate_transcript(interaction.channel)
-    file = discord.File(io.BytesIO(transcript_text.encode()), filename="transcript.txt")
+        transcript_text = await generate_transcript(interaction.channel)
+        file = discord.File(io.BytesIO(transcript_text.encode()), filename="transcript.txt")
 
-    if logs:
-        await logs.send(f"Transcript of {interaction.channel.name}", file=file)
+        if logs:
+            await logs.send(f"Transcript of {interaction.channel.name}", file=file)
 
-    await interaction.channel.delete()
+        await interaction.channel.delete()
 
 # -------------------- EVENTS --------------------
 
@@ -437,7 +453,7 @@ async def on_message(message):
             del warn_waiting[message.channel.id]
             await message.channel.send("✅ User replied. Warning cleared.")
 
-# -------------------- COMMANDS --------------------@tree.command(
+# -------------------- COMMANDS --------------------
 @tree.command(
     name="warn",
     description="Warn user in ticket",
