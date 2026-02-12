@@ -248,30 +248,38 @@ class MainPanel(View):
 
 class TierTestModal(Modal):
     def __init__(self):
-        super().__init__(title="Tier Test Request", timeout=None)
-        self.add_item(TextInput(label="Region", placeholder="Asia / Europe / North America / South America", max_length=50))
-        self.add_item(TextInput(label="Gamemode", placeholder="Crystal PvP / NethPot PvP / SMP PvP / Sword", max_length=50))
-        self.add_item(TextInput(label="Account Type", placeholder="Premium / Cracked", max_length=20))
+        super().__init__(title="Tier Test Details", timeout=None)
+        self.add_item(TextInput(label="Minecraft + Discord Username", placeholder="Your username here", max_length=50))
+        self.add_item(TextInput(label="Age", placeholder="Your age", max_length=5))
+        self.add_item(TextInput(label="Timezone / Region", placeholder="Asia / Europe / NA / SA", max_length=30))
+        self.add_item(TextInput(label="Gamemodes you can test", placeholder="Crystal, NethPot, SMP, Sword", max_length=50))
+        self.add_item(TextInput(label="Hours per day you can dedicate", placeholder="E.g., 3 hours", max_length=10))
 
     async def on_submit(self, interaction: discord.Interaction):
-        region = self.children[0].value
-        mode = self.children[1].value
-        account = self.children[2].value
+        key = (interaction.user.id, interaction.channel.id)
+        region = user_selections.get(key, {}).get('region', "Not Selected")
+        mode = user_selections.get(key, {}).get('mode', "Not Selected")
 
+        # Create professional embed
         embed = discord.Embed(
-            title="🎫 Tier Test Request Submitted",
-            description=f"Requester: {interaction.user.mention}\nRegion: {region}\nMode: {mode}\nAccount Type: {account}\n\n{random.choice(interesting_quotes)}",
-            color=discord.Color.orange(),
+            title="🎫 Tier Test Submission",
+            color=discord.Color.blue(),
             timestamp=discord.utils.utcnow()
         )
-        embed.set_footer(text="Request submitted", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
-        await interaction.response.send_message(embed=embed)
+        embed.add_field(name="Requester", value=interaction.user.mention, inline=False)
+        embed.add_field(name="Region", value=region, inline=True)
+        embed.add_field(name="Gamemode", value=mode, inline=True)
 
-        # Notify staff
-        if "staff_role" in ticket_config:
-            staff_role = interaction.guild.get_role(ticket_config["staff_role"])
-            if staff_role:
-                await interaction.followup.send(f"{staff_role.mention}, a new tier test request has been submitted!", ephemeral=True)
+        # Add the modal answers
+        for item in self.children:
+            embed.add_field(name=item.label, value=item.value or "No answer", inline=False)
+
+        embed.set_footer(text="Tier Test Request Submitted")
+
+        # Send in the current channel (ticket)
+        await interaction.response.send_message(embed=embed)
+        # Clear selections
+        user_selections.pop(key, None)
 
 class TierTicketView(View):
     def __init__(self):
@@ -284,9 +292,14 @@ class TierTicketView(View):
         key = (interaction.user.id, interaction.channel.id)
         region = user_selections.get(key, {}).get('region')
         mode = user_selections.get(key, {}).get('mode')
+
         if not region or not mode:
-            await interaction.response.send_message("Please select both Region and Mode before submitting.", ephemeral=True)
+            await interaction.response.send_message("❌ Please select both Region and Gamemode before submitting.", ephemeral=True)
             return
+
+        # Open modal for detailed questions
+        await interaction.response.send_modal(TierTestModal())
+
         embed = discord.Embed(
             title="🎫 Tier Test Request Submitted",
             description=f"Requester: {interaction.user.mention}\nRegion: {region}\nMode: {mode}\n\n{random.choice(interesting_quotes)}",
@@ -305,6 +318,36 @@ class TierTicketView(View):
             staff_role = interaction.guild.get_role(ticket_config["staff_role"])
             if staff_role:
                 await interaction.followup.send(f"{staff_role.mention}, a new tier test request has been submitted!", ephemeral=True)
+
+class RegionSelect(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label="Asia", description="Asia region"),
+            discord.SelectOption(label="Europe", description="Europe region"),
+            discord.SelectOption(label="North America", description="North America region"),
+            discord.SelectOption(label="South America", description="South America region"),
+        ]
+        super().__init__(placeholder="Select your Region...", min_values=1, max_values=1, options=options, custom_id="region_select")
+
+    async def callback(self, interaction: discord.Interaction):
+        key = (interaction.user.id, interaction.channel.id)
+        user_selections.setdefault(key, {})['region'] = self.values[0]
+        await interaction.response.send_message(f"✅ Region set to {self.values[0]}", ephemeral=True)
+
+class ModeSelect(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label="Crystal PvP", description="Crystal PvP mode"),
+            discord.SelectOption(label="NethPot PvP", description="NethPot PvP mode"),
+            discord.SelectOption(label="SMP PvP", description="SMP PvP mode"),
+            discord.SelectOption(label="Sword", description="Sword mode"),
+        ]
+        super().__init__(placeholder="Select your Gamemode...", min_values=1, max_values=1, options=options, custom_id="mode_select")
+
+    async def callback(self, interaction: discord.Interaction):
+        key = (interaction.user.id, interaction.channel.id)
+        user_selections.setdefault(key, {})['mode'] = self.values[0]
+        await interaction.response.send_message(f"✅ Gamemode set to {self.values[0]}", ephemeral=True)
 
 class TicketButtons(View):
     def __init__(self):
