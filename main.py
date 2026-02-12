@@ -172,7 +172,8 @@ class TierModal(Modal, title="Tier Test Form"):
     region = TextInput(label="Region")
     mode = TextInput(label="Gamemode")
 
-    async def on_submit(self, interaction: discord.Interaction):
+async def on_submit(self, interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
         if interaction.channel.id not in ticket_owners:
             await interaction.response.send_message(
                 "This form can only be used inside a ticket.",
@@ -190,7 +191,7 @@ class TierModal(Modal, title="Tier Test Form"):
             embed.add_field(name=item.label, value=item.value, inline=False)
 
         await interaction.channel.send(embed=embed)
-        await interaction.response.send_message("✅ Tier form submitted.", ephemeral=True)
+        await interaction.followup.send("✅ Tier form submitted.", ephemeral=True)
 
 class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Staff Application"):
 
@@ -222,32 +223,36 @@ class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Staff Appli
         style=discord.TextStyle.paragraph
     )
 
-    async def on_submit(self, interaction: discord.Interaction):
+async def on_submit(self, interaction: discord.Interaction):
 
-        embed = discord.Embed(
-            title="📝 Crystal Hub • New Staff Application",
-            color=discord.Color.blue(),
-            timestamp=discord.utils.utcnow()
-        )
+    await interaction.response.defer(ephemeral=True)  # <<< THIS FIXES IT
 
-        embed.add_field(name="Applicant", value=interaction.user.mention, inline=False)
+    embed = discord.Embed(
+        title="📝 Crystal Hub • New Staff Application",
+        color=discord.Color.blue(),
+        timestamp=discord.utils.utcnow()
+    )
 
-        for item in self.children:
-            embed.add_field(name=item.label, value=item.value, inline=False)
+    embed.add_field(name="Applicant", value=interaction.user.mention, inline=False)
 
-        embed.set_footer(
-            text=f"Applicant ID: {interaction.user.id}",
-            icon_url=interaction.user.display_avatar.url
-        )
+    for item in self.children:
+        embed.add_field(name=item.label, value=item.value, inline=False)
 
-        logs = interaction.guild.get_channel(application_config["logs_channel"])
-        view = ApplicationReviewView(interaction.user.id)
+    embed.set_footer(
+        text=f"Applicant ID: {interaction.user.id}",
+        icon_url=interaction.user.display_avatar.url
+    )
 
+    logs = interaction.guild.get_channel(application_config["logs_channel"])
+    view = ApplicationReviewView(interaction.user.id)
+
+    if logs:
         await logs.send(embed=embed, view=view)
-        await interaction.response.send_message(
-            "✅ Your application has been submitted to Crystal Hub Staff Team.",
-            ephemeral=True
-        )
+
+    await interaction.followup.send(
+        "✅ Your application has been submitted to Crystal Hub Staff Team.",
+        ephemeral=True
+    )
 
 class TierFormButton(discord.ui.View):
     def __init__(self):
