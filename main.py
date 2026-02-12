@@ -7,6 +7,9 @@ from discord.ui import View, Button, Modal, TextInput
 from dotenv import load_dotenv
 import datetime
 import json
+import logging
+logger = logging.getLogger("crystalhub")
+logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
 TOKEN = os.getenv("TOKEN")
@@ -162,11 +165,10 @@ class MainPanel(discord.ui.View):
 
         await channel.send(embed=embed, view=TierFormButton())
         await channel.send(view=TicketButtons())
-
         await interaction.response.send_message(
-            f"✅ Ticket created: {channel.mention}",
-            ephemeral=True
-        )
+    f"✅ Ticket created: {channel.mention}",
+    ephemeral=True
+)
 
         except Exception as e:
             logger.error(e)
@@ -212,33 +214,19 @@ class TierModal(Modal, title="Tier Test Form"):
     mode = TextInput(label="Gamemode")
 
     async def on_submit(self, interaction: discord.Interaction):
-        embed = discord.Embed(title="📋 Tier Test Request", color=discord.Color.green())
-        for item in self.children:
-            embed.add_field(name=item.label, value=item.value, inline=False)
-        await interaction.channel.send(embed=embed)
-        await interaction.response.send_message("Submitted.", ephemeral=True)
-        # Clear selections
-        # Open modal for detailed questions
-        await interaction.response.send_modal(TierTestModal())
+        channel = find_existing_ticket(interaction.guild, interaction.user.id)
 
         embed = discord.Embed(
-            title="🎫 Tier Test Request Submitted",
-            description=f"Requester: {interaction.user.mention}\nRegion: {region}\nMode: {mode}\n\n{random.choice(interesting_quotes)}",
-            color=discord.Color.orange(),
+            title="📋 Tier Test Request",
+            color=discord.Color.green(),
             timestamp=discord.utils.utcnow()
         )
-        embed.set_footer(text="Request submitted", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
-        await interaction.response.send_message(embed=embed)
-        # Disable the view after submission to prevent further changes
-        self.clear_items()
-        await interaction.message.edit(view=self)
-        # Clean up selections
-        user_selections.pop(key, None)
-        logger.info(f"Tier test request submitted by {interaction.user}: Region {region}, Mode {mode}")
-        if "staff_role" in ticket_config:
-            staff_role = interaction.guild.get_role(ticket_config["staff_role"])
-            if staff_role:
-                await interaction.followup.send(f"{staff_role.mention}, a new tier test request has been submitted!", ephemeral=True)
+
+        for item in self.children:
+            embed.add_field(name=item.label, value=item.value, inline=False)
+
+        await channel.send(embed=embed)
+        await interaction.response.send_message("✅ Form submitted.", ephemeral=True)
 
 class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Tester Staff Application"):
 
@@ -313,7 +301,7 @@ class TierFormButton(discord.ui.View):
 
     @discord.ui.button(label="Fill Tier Test Form", style=discord.ButtonStyle.blurple)
     async def open_form(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(TierRequestModal())
+    await interaction.response.send_modal(TierModal())
     
 # ================= REJECT REASON MODAL =================
 
@@ -394,7 +382,8 @@ class TicketButtons(View):
 
     @discord.ui.button(label="Warn", emoji="⚠️", style=discord.ButtonStyle.secondary)
     async def warn(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_modal(WarnModal())
+    await interaction.response.send_message("Use /warn command.", ephemeral=True)
+
 
     @discord.ui.button(label="Close", emoji="🔒", style=discord.ButtonStyle.danger)
     async def close(self, interaction: discord.Interaction, button: Button):
@@ -473,92 +462,14 @@ class CloseButton(Button):
 @client.event
 async def on_ready():
     load_config()
-    client.add_view(PanelView())
-    client.add_view(TicketView())
+    client.add_view(MainPanel())
+    client.add_view(TicketButtons())
+    client.add_view(TierFormButton())
+    client.add_view(ApplicationPanel())
+    asyncio.create_task(auto_close_task())
     asyncio.create_task(warn_checker())
     await tree.sync(guild=discord.Object(id=GUILD_ID))
     print("✅Bot Ready")
-
-@client.event
-async def on_message(message):
-    if message.author.bot:
-        return
-
-    # Track ticket activity in servers
-    if message.guild and message.channel.id in ticket_owners:
-        last_activity[message.channel.id] = message.created_at.timestamp()
-
-if message.channel.id in warn_waiting:
-    if message.author.id == warn_waiting[message.channel.id]["user"]:
-        del warn_waiting[message.channel.id]
-        await message.channel.send("Warn cleared. User responded.")
-
-    # If NOT DM → allow slash commands to work
-    if not isinstance(message.channel, discord.DMChannel):
-        await client.process_commands(message)
-        return
-
-    user_id = message.author.id
-
-    # Not in application flow
-    if user_id not in application_states:
-        return
-
-    state = application_states[user_id]
-    step = state['step']
-    answers = state['answers']
-
-    # Save answer
-    answers.append(message.content.strip())
-    step += 1
-
-    # Ask next question
-    if step < len(questions):
-        state['step'] = step
-        await message.channel.send(f"**Question {step + 1}:** {questions[step]}")
-        return
-
-    # Application finished
-    del application_states[user_id]
-
-    embed = discord.Embed(
-        title="📝 New Staff Application",
-        description=f"Submitted by {message.author} ({user_id})",
-        color=discord.Color.blue(),
-        timestamp=discord.utils.utcnow()
-    )
-
-    # Add Q/A safely
-    for i in range(len(questions)):
-        answer = answers[i] if answers[i] else "No response"
-        embed.add_field(
-            name=f"Q{i+1}: {questions[i]}",
-            value=answer,
-            inline=False
-        )
-
-    embed.set_footer(
-        text=f"Applicant ID: {user_id}",
-        icon_url=message.author.avatar.url if message.author.avatar else None
-    )
-
-    # Send to logs safely
-    logs_id = application_config.get("logs_channel")
-    role_id = application_config.get("staff_role")
-
-    if logs_id:
-        logs_channel = client.get_channel(logs_id)
-        guild = client.get_guild(GUILD_ID)
-        staff_role = guild.get_role(role_id) if guild and role_id else None
-
-        if logs_channel:
-            await logs_channel.send(
-                content=staff_role.mention if staff_role else None,
-                embed=embed
-            )
-
-    await message.channel.send("✅ Your staff application has been submitted successfully.")
-    await client.process_commands(message)
 
 # -------------------- COMMANDS --------------------
 @tree.command(name="warn", description="Warn user in ticket")
@@ -590,7 +501,7 @@ async def warn_checker():
                 channel = client.get_channel(cid)
                 member = channel.guild.get_member(data["user"])
                 await member.timeout(datetime.timedelta(hours=1))
-                await close_ticket(channel, client.user)
+                await channel.delete()
                 del warn_waiting[cid]
                 
 @tree.command(name="tier", description="Post official tier result", guild=discord.Object(id=GUILD_ID))
