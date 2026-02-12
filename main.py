@@ -177,13 +177,22 @@ class TierFormButton(discord.ui.View):
         self.channel_id = channel_id
 
     @discord.ui.button(label="📝 Tier Test Form", style=discord.ButtonStyle.success, custom_id="tier_form_btn")
-    async def open_form(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def on_submit(self, interaction: discord.Interaction):
+    tier_filled[self.parent_view.channel_id] = True
 
-        if tier_filled.get(self.channel_id):
-            await interaction.response.send_message("Form already submitted.", ephemeral=True)
-            return
+    embed = discord.Embed(title="📋 Tier Test Submission", color=discord.Color.green())
+    for item in self.children:
+        embed.add_field(name=item.label, value=item.value, inline=False)
 
-        await interaction.response.send_modal(TierModal(self))
+    await interaction.channel.send(embed=embed)
+
+    # disable button PROPERLY
+    for child in self.parent_view.children:
+        child.disabled = True
+
+    await interaction.channel.send(view=self.parent_view)
+
+    await interaction.response.send_message("Tier Form Submitted.✅", ephemeral=True)
 
 class TierModal(discord.ui.Modal, title="Tier Test Form"):
     def __init__(self, parent_view: TierFormButton):
@@ -283,19 +292,6 @@ class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Staff Appli
             "✅ Your application has been submitted to Crystal Hub Staff Team.",
             ephemeral=True
         )
-
-class TierFormButton(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=None)
-
-    @discord.ui.button(
-        label="📝 Tier Test Form",
-        style=discord.ButtonStyle.success,
-        custom_id="tier_form_btn"
-    )
-    async def open_form(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(TierModal())
-
 # ================= REJECT REASON MODAL =================
 
 class RejectReasonModal(discord.ui.Modal, title="Application Rejection Reason"):
@@ -342,7 +338,7 @@ class ApplicationReviewView(discord.ui.View):
             child.disabled = True
         await interaction.message.edit(view=self)
 
-    @discord.ui.button(label="Accept", style=discord.ButtonStyle.green, custom_id="app_accept_btn")
+    @discord.ui.button(label="Accept", style=discord.ButtonStyle.green, custom_id="app_accept_unique")
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
 
         if self.handled:
@@ -363,7 +359,7 @@ class ApplicationReviewView(discord.ui.View):
         await self.disable_all(interaction)
         await interaction.response.send_message("Applicant accepted.", ephemeral=True)
 
-    @discord.ui.button(label="Reject", style=discord.ButtonStyle.red, custom_id="app_reject_btn")
+    @discord.ui.button(label="Reject", style=discord.ButtonStyle.red, custom_id="app_reject_unique")
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
 
         if self.handled:
@@ -435,10 +431,11 @@ class TicketButtons(discord.ui.View):
 async def on_ready():
     load_config()
 
+    # REGISTER ALL PERSISTENT VIEWS
     client.add_view(MainPanel())
     client.add_view(TicketButtons())
     client.add_view(ApplicationPanel())
-    # Removed adding ApplicationReviewView with dummy ID; add dynamically as needed
+    client.add_view(TierFormButton(0))  # dummy id for persistence
 
     asyncio.create_task(auto_close_task())
     asyncio.create_task(warn_checker())
