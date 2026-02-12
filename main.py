@@ -164,7 +164,7 @@ class MainPanel(discord.ui.View):
         embed.set_image(url="https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif")
         embed.set_footer(text=f"User ID: {interaction.user.id}")
 
-        await channel.send(embed=embed, view=TierFormButton())
+        await channel.send(embed=embed, view=TierFormButton(channel.id))
         await channel.send(view=TicketButtons())
 
         await interaction.response.send_message(
@@ -199,18 +199,16 @@ class TierModal(discord.ui.Modal, title="Tier Test Form"):
         await interaction.response.send_message("Tier Form Submitted.✅", ephemeral=True)
 
 class TierFormButton(discord.ui.View):
-    def __init__(self, channel_id: int):
+    def __init__(self):
         super().__init__(timeout=None)
-        self.channel_id = channel_id
 
-    @discord.ui.button(label="📝 Tier Test Form", style=discord.ButtonStyle.success, custom_id="tier_form_btn")
+    @discord.ui.button(
+        label="📝 Tier Test Form",
+        style=discord.ButtonStyle.success,
+        custom_id="tier_form_btn"
+    )
     async def open_form(self, interaction: discord.Interaction, button: discord.ui.Button):
-
-        if tier_filled.get(self.channel_id):
-            await interaction.response.send_message("Form already submitted.", ephemeral=True)
-            return
-
-        await interaction.response.send_modal(TierModal(self))
+        await interaction.response.send_modal(TierModal())
 #---------------------------------------------------------------------------------------
 class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Staff Application"):
 
@@ -311,9 +309,10 @@ class RejectReasonModal(discord.ui.Modal, title="Application Rejection Reason"):
         self.applicant_id = applicant_id
 
     async def on_submit(self, interaction: discord.Interaction):
-       user = interaction.guild.get_member(self.applicant_id)
-        
-    active_applications.pop(self.applicant_id, None)
+        user = interaction.guild.get_member(self.applicant_id)
+
+        # remove application lock
+        active_applications.pop(self.applicant_id, None)
 
         try:
             await user.send(
@@ -323,7 +322,10 @@ class RejectReasonModal(discord.ui.Modal, title="Application Rejection Reason"):
         except:
             pass
 
-        await interaction.response.send_message("Rejection reason sent to applicant.", ephemeral=True)
+        await interaction.response.send_message(
+            "Rejection reason sent to applicant.",
+            ephemeral=True
+        )
 
 # ================= REVIEW BUTTONS =================
 
@@ -432,7 +434,6 @@ async def on_ready():
     load_config()
 
     client.add_view(MainPanel())
-    client.add_view(TierFormButton())
     client.add_view(TicketButtons())
     client.add_view(ApplicationPanel())
     # Removed adding ApplicationReviewView with dummy ID; add dynamically as needed
