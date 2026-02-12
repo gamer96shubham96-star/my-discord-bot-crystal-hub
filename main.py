@@ -185,6 +185,10 @@ class MainPanel(View):
 
             ticket_owners[channel.id] = interaction.user.id
 
+            await channel.send(view=TicketButtons())
+
+            await interaction.response.send_modal(TierRequestModal())
+
             welcome_embed = discord.Embed(
                 title="🎫 Welcome to Your Tier Test Ticket!",
                 description=(
@@ -246,57 +250,30 @@ class MainPanel(View):
                 ephemeral=True
             )
 
-class TierTestModal(Modal):
-    def __init__(self):
-        super().__init__(title="Tier Test Details", timeout=None)
-        self.add_item(TextInput(label="Minecraft + Discord Username", placeholder="Your username here", max_length=50))
-        self.add_item(TextInput(label="Age", placeholder="Your age", max_length=5))
-        self.add_item(TextInput(label="Timezone / Region", placeholder="Asia / Europe / NA / SA", max_length=30))
-        self.add_item(TextInput(label="Gamemodes you can test", placeholder="Crystal, NethPot, SMP, Sword", max_length=50))
-        self.add_item(TextInput(label="Hours per day you can dedicate", placeholder="E.g., 3 hours", max_length=10))
+class TierRequestModal(discord.ui.Modal, title="Tier Test Request Form"):
+
+    mc_discord = TextInput(label="Minecraft & Discord Username", max_length=50)
+    age = TextInput(label="Age", max_length=3)
+    region = TextInput(label="Region (Asia / EU / NA / SA)", max_length=20)
+    mode = TextInput(label="Gamemode (Crystal / NethPot / SMP / Sword)", max_length=20)
+    hours = TextInput(label="Hours Available Daily", max_length=10)
 
     async def on_submit(self, interaction: discord.Interaction):
-        key = (interaction.user.id, interaction.channel.id)
-        region = user_selections.get(key, {}).get('region', "Not Selected")
-        mode = user_selections.get(key, {}).get('mode', "Not Selected")
-
-        # Create professional embed
         embed = discord.Embed(
-            title="🎫 Tier Test Submission",
+            title="📋 Tier Test Request",
             color=discord.Color.blue(),
             timestamp=discord.utils.utcnow()
         )
-        embed.add_field(name="Requester", value=interaction.user.mention, inline=False)
-        embed.add_field(name="Region", value=region, inline=True)
-        embed.add_field(name="Gamemode", value=mode, inline=True)
 
-        # Add the modal answers
-        for item in self.children:
-            embed.add_field(name=item.label, value=item.value or "No answer", inline=False)
+        embed.add_field(name="User", value=interaction.user.mention, inline=False)
+        embed.add_field(name="MC + Discord", value=self.mc_discord.value, inline=False)
+        embed.add_field(name="Age", value=self.age.value, inline=True)
+        embed.add_field(name="Region", value=self.region.value, inline=True)
+        embed.add_field(name="Gamemode", value=self.mode.value, inline=True)
+        embed.add_field(name="Daily Hours", value=self.hours.value, inline=True)
 
-        embed.set_footer(text="Tier Test Request Submitted")
-
-        # Send in the current channel (ticket)
         await interaction.response.send_message(embed=embed)
         # Clear selections
-        user_selections.pop(key, None)
-
-class TierTicketView(View):
-    def __init__(self):
-        super().__init__(timeout=None)
-        self.add_item(RegionSelect())
-        self.add_item(ModeSelect())
-
-    @discord.ui.button(label="Submit Request", style=discord.ButtonStyle.green, custom_id="tier_submit_btn")
-    async def submit(self, interaction: discord.Interaction, button: Button):
-        key = (interaction.user.id, interaction.channel.id)
-        region = user_selections.get(key, {}).get('region')
-        mode = user_selections.get(key, {}).get('mode')
-
-        if not region or not mode:
-            await interaction.response.send_message("❌ Please select both Region and Gamemode before submitting.", ephemeral=True)
-            return
-
         # Open modal for detailed questions
         await interaction.response.send_modal(TierTestModal())
 
@@ -319,35 +296,142 @@ class TierTicketView(View):
             if staff_role:
                 await interaction.followup.send(f"{staff_role.mention}, a new tier test request has been submitted!", ephemeral=True)
 
-class RegionSelect(discord.ui.Select):
+class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Tester Staff Application"):
+
+    username = discord.ui.TextInput(
+        label="Minecraft Username & Discord Tag",
+        placeholder="Example: Shubham96 | qbhsihekyt_11",
+        max_length=60
+    )
+
+    age = discord.ui.TextInput(
+        label="Age",
+        max_length=3
+    )
+
+    region = discord.ui.TextInput(
+        label="Region / Timezone",
+        placeholder="Example: Asia / IST",
+        max_length=40
+    )
+
+    gamemodes = discord.ui.TextInput(
+        label="Gamemodes You Can Professionally Test",
+        placeholder="Crystal, NethPot, SMP, Sword",
+        max_length=80
+    )
+
+    experience = discord.ui.TextInput(
+        label="PvP Experience (Years)",
+        max_length=20
+    )
+
+    staff_exp = discord.ui.TextInput(
+        label="Previous Staff Experience",
+        style=discord.TextStyle.paragraph
+    )
+
+    reason = discord.ui.TextInput(
+        label="Why Should Crystal Hub Select You As Tester?",
+        style=discord.TextStyle.paragraph
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+
+        embed = discord.Embed(
+            title="📝 Crystal Hub • New Staff Application",
+            color=discord.Color.blue(),
+            timestamp=discord.utils.utcnow()
+        )
+
+        embed.add_field(name="Applicant", value=interaction.user.mention, inline=False)
+
+        for item in self.children:
+            embed.add_field(name=item.label, value=item.value, inline=False)
+
+        embed.set_footer(
+            text=f"Applicant ID: {interaction.user.id}",
+            icon_url=interaction.user.display_avatar.url
+        )
+
+        logs = interaction.guild.get_channel(application_config["logs_channel"])
+        view = ApplicationReviewView(interaction.user.id)
+
+        await logs.send(embed=embed, view=view)
+        await interaction.response.send_message(
+            "✅ Your application has been submitted to Crystal Hub Staff Team.",
+            ephemeral=True
+        )
+
+
+# ================= REJECT REASON MODAL =================
+
+class RejectReasonModal(discord.ui.Modal, title="Application Rejection Reason"):
+
+    reason = discord.ui.TextInput(
+        label="Reason for rejection",
+        style=discord.TextStyle.paragraph,
+        max_length=500
+    )
+
+    def __init__(self, applicant_id: int):
+        super().__init__()
+        self.applicant_id = applicant_id
+
+    async def on_submit(self, interaction: discord.Interaction):
+        user = interaction.guild.get_member(self.applicant_id)
+
+        try:
+            await user.send(
+                f"❌ Your Tester Application at **Crystal Hub** was rejected.\n\n"
+                f"**Reason:**\n{self.reason.value}"
+            )
+        except:
+            pass
+
+        await interaction.response.send_message("Rejection reason sent to applicant.", ephemeral=True)
+
+
+# ================= REVIEW BUTTONS =================
+
+class ApplicationReviewView(discord.ui.View):
+    def __init__(self, applicant_id: int):
+        super().__init__(timeout=None)
+        self.applicant_id = applicant_id
+
+    @discord.ui.button(label="Accept", style=discord.ButtonStyle.green)
+    async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+
+        user = interaction.guild.get_member(self.applicant_id)
+
+        try:
+            await user.send(
+                "🎉 Congratulations!\n\n"
+                "Your Tester Application at **Crystal Hub** has been **ACCEPTED**.\n"
+                "A staff member will contact you shortly."
+            )
+        except:
+            pass
+
+        button.disabled = True
+        await interaction.message.edit(view=self)
+        await interaction.response.send_message("Applicant accepted and notified.", ephemeral=True)
+
+    @discord.ui.button(label="Reject", style=discord.ButtonStyle.red)
+    async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(RejectReasonModal(self.applicant_id))
+
+
+# ================= APPLICATION PANEL =================
+
+class ApplicationPanel(discord.ui.View):
     def __init__(self):
-        options = [
-            discord.SelectOption(label="Asia", description="Asia region"),
-            discord.SelectOption(label="Europe", description="Europe region"),
-            discord.SelectOption(label="North America", description="North America region"),
-            discord.SelectOption(label="South America", description="South America region"),
-        ]
-        super().__init__(placeholder="Select your Region...", min_values=1, max_values=1, options=options, custom_id="region_select")
+        super().__init__(timeout=None)
 
-    async def callback(self, interaction: discord.Interaction):
-        key = (interaction.user.id, interaction.channel.id)
-        user_selections.setdefault(key, {})['region'] = self.values[0]
-        await interaction.response.send_message(f"✅ Region set to {self.values[0]}", ephemeral=True)
+    @discord.ui.button(label="Apply for Tester", style=discord.ButtonStyle.blurple)
+    async def apply(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(StaffApplicationModal())
 
-class ModeSelect(discord.ui.Select):
-    def __init__(self):
-        options = [
-            discord.SelectOption(label="Crystal PvP", description="Crystal PvP mode"),
-            discord.SelectOption(label="NethPot PvP", description="NethPot PvP mode"),
-            discord.SelectOption(label="SMP PvP", description="SMP PvP mode"),
-            discord.SelectOption(label="Sword", description="Sword mode"),
-        ]
-        super().__init__(placeholder="Select your Gamemode...", min_values=1, max_values=1, options=options, custom_id="mode_select")
-
-    async def callback(self, interaction: discord.Interaction):
-        key = (interaction.user.id, interaction.channel.id)
-        user_selections.setdefault(key, {})['mode'] = self.values[0]
-        await interaction.response.send_message(f"✅ Gamemode set to {self.values[0]}", ephemeral=True)
 
 class TicketButtons(View):
     def __init__(self):
@@ -695,48 +779,33 @@ async def panel(interaction: discord.Interaction):
     
     await interaction.response.send_message(embed=embed, view=MainPanel())
 
-@tree.command(name="setup_applications", description="Setup application system", guild=discord.Object(id=GUILD_ID))
+@tree.command(name="setup_applications", description="Setup application logs", guild=discord.Object(id=GUILD_ID))
 @app_commands.checks.has_permissions(administrator=True)
 async def setup_applications(
     interaction: discord.Interaction,
     logs_channel: discord.TextChannel,
-    staff_role: discord.Role,
 ):
     application_config["logs_channel"] = logs_channel.id
-    application_config["staff_role"] = staff_role.id
-    embed = discord.Embed(
-        title="✅ Application System Configured",
-        description=f"Logs Channel: {logs_channel.mention}\nStaff Role: {staff_role.mention}",
-        color=discord.Color.green(),
-        timestamp=discord.utils.utcnow()
-    )
-    embed.set_footer(text="Configuration completed", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
-    await interaction.response.send_message(embed=embed, ephemeral=True)
-    # Log the setup
-    logger.info(f"Application system configured by {interaction.user}: Logs Channel {logs_channel.name}, Staff Role {staff_role.name}")
     save_config()
 
-@tree.command(name="applications", description="Start staff application", guild=discord.Object(id=GUILD_ID))
-async def applications(interaction: discord.Interaction):
-    if "logs_channel" not in application_config or "staff_role" not in application_config:
-        await interaction.response.send_message("Application system is not configured by admins.", ephemeral=True)
-        return
+    await interaction.response.send_message(
+        f"✅ Application system configured.\nLogs: {logs_channel.mention}",
+        ephemeral=True
+    )
 
-    user_id = interaction.user.id
+@tree.command(name="application_panel", description="Send staff application panel", guild=discord.Object(id=GUILD_ID))
+async def application_panel(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="Crystal Hub • Staff Applications",
+        description=(
+            "Interested in becoming a **Crystal Hub Staff?**\n\n"
+            "Click the button below and fill the form.\n"
+            "Ensure all details are accurate before submitting."
+        ),
+        color=discord.Color.purple()
+    )
 
-    if user_id in application_states:
-        await interaction.response.send_message("You already have a pending application.", ephemeral=True)
-        return
-
-    application_states[user_id] = {'step': 0, 'answers': []}
-
-    await interaction.response.send_message("📩 Check your DMs to start the application!", ephemeral=True)
-
-    try:
-        await interaction.user.send(f"**Question 1:** {questions[0]}")
-    except:
-        application_states.pop(user_id, None)
-        await interaction.followup.send("I cannot DM you. Please enable DMs from server members.", ephemeral=True)
+    await interaction.response.send_message(embed=embed, view=ApplicationPanel())
 # -------------------- START BOT --------------------
 
 if __name__ == "__main__":
