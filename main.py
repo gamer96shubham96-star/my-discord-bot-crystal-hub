@@ -115,61 +115,49 @@ class MainPanel(discord.ui.View):
         style=discord.ButtonStyle.blurple,
         custom_id="panel_tier_btn"
     )
-    async def tier(self, interaction: discord.Interaction, button: discord.ui.Button):
+async def tier(self, interaction: discord.Interaction, button: discord.ui.Button):
 
-        if "category" not in ticket_config:
-            await interaction.response.send_message(
-                "Ticket system not configured.",
-                ephemeral=True
-            )
-            return
-
-        # Check existing ticket
-        existing = find_existing_ticket(interaction.guild, interaction.user.id)
-        if existing:
-            await interaction.response.send_message(
-                f"You already have a ticket: {existing.mention}",
-                ephemeral=True
-            )
-            return
-
-        category = interaction.guild.get_channel(ticket_config["category"])
-        staff_role = interaction.guild.get_role(ticket_config["staff_role"])
-
-        overwrites = {
-            interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True),
-            staff_role: discord.PermissionOverwrite(view_channel=True, send_messages=True),
-        }
-
-        # Create channel
-        channel = await category.create_text_channel(
-            name=f"tier-{interaction.user.name}".lower().replace(" ", "-"),
-            overwrites=overwrites
-        )
-
-        ticket_owners[channel.id] = interaction.user.id
-
-        # Professional welcome embed
-        embed = discord.Embed(
-            title="🎫 Crystal Hub • Tier Test Ticket",
-            description=(
-                f"Welcome {interaction.user.mention}\n\n"
-                "Click the button below and fill the **Tier Test Form**."
-            ),
-            color=discord.Color.blue(),
-            timestamp=discord.utils.utcnow()
-        )
-
-        embed.set_image(url="https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif")
-
-        await channel.send(embed=embed, view=TierFormButton())
-        await channel.send(view=TicketButtons())
+    existing = find_existing_ticket(interaction.guild, interaction.user.id)
+    if existing:
         await interaction.response.send_message(
-    f"✅ Ticket created: {channel.mention}",
-    ephemeral=True
-)
+            f"You already have a ticket: {existing.mention}",
+            ephemeral=True
+        )
+        return
 
+    category = interaction.guild.get_channel(ticket_config["category"])
+    staff_role = interaction.guild.get_role(ticket_config["staff_role"])
+
+    overwrites = {
+        interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+        interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True),
+        staff_role: discord.PermissionOverwrite(view_channel=True, send_messages=True),
+    }
+
+    channel = await category.create_text_channel(
+        name=f"tier-{interaction.user.name}",
+        overwrites=overwrites
+    )
+
+    ticket_owners[channel.id] = interaction.user.id
+
+    embed = discord.Embed(
+        title="🎫 Crystal Hub • Tier Test Ticket",
+        description=(
+            f"{interaction.user.mention}\n\n"
+            "Click below and submit your Tier Test form."
+        ),
+        color=discord.Color.blurple(),
+    )
+    embed.set_image(url="https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif")
+
+    await channel.send(embed=embed, view=TierFormButton())
+    await channel.send(view=TicketButtons())
+
+    await interaction.response.send_message(
+        f"✅ Ticket created: {channel.mention}",
+        ephemeral=True
+    )
         except Exception as e:
             logger.error(e)
             await interaction.response.send_message(
@@ -213,20 +201,18 @@ class TierModal(Modal, title="Tier Test Form"):
     region = TextInput(label="Region")
     mode = TextInput(label="Gamemode")
 
-    async def on_submit(self, interaction: discord.Interaction):
-        channel = find_existing_ticket(interaction.guild, interaction.user.id)
+async def on_submit(self, interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="📋 Tier Test Submission",
+        color=discord.Color.green(),
+        timestamp=discord.utils.utcnow()
+    )
 
-        embed = discord.Embed(
-            title="📋 Tier Test Request",
-            color=discord.Color.green(),
-            timestamp=discord.utils.utcnow()
-        )
+    for item in self.children:
+        embed.add_field(name=item.label, value=item.value, inline=False)
 
-        for item in self.children:
-            embed.add_field(name=item.label, value=item.value, inline=False)
-
-        await channel.send(embed=embed)
-        await interaction.response.send_message("✅ Form submitted.", ephemeral=True)
+    await interaction.channel.send(embed=embed)
+    await interaction.response.send_message("✅ Tier form submitted to ticket.", ephemeral=True)
 
 class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Tester Staff Application"):
 
@@ -299,9 +285,13 @@ class TierFormButton(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Fill Tier Test Form", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(
+        label="📝 Fill Tier Test Form",
+        style=discord.ButtonStyle.success,
+        custom_id="tier_form_btn"
+    )
     async def open_form(self, interaction: discord.Interaction, button: discord.ui.Button):
-    await interaction.response.send_modal(TierModal())
+        await interaction.response.send_modal(TierModal())
     
 # ================= REJECT REASON MODAL =================
 
@@ -372,21 +362,28 @@ class ApplicationPanel(discord.ui.View):
         await interaction.response.send_modal(StaffApplicationModal())
 
 
-class TicketButtons(View):
+class TicketButtons(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Claim", emoji="📌", style=discord.ButtonStyle.primary)
-    async def claim(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_message("Ticket claimed.", ephemeral=True)
+    @discord.ui.button(label="📌 Claim Ticket", style=discord.ButtonStyle.primary, custom_id="claim_ticket")
+    async def claim(self, interaction: discord.Interaction, button: discord.ui.Button):
+        staff_role = interaction.guild.get_role(ticket_config["staff_role"])
+        if staff_role not in interaction.user.roles:
+            await interaction.response.send_message("Staff only.", ephemeral=True)
+            return
 
-    @discord.ui.button(label="Warn", emoji="⚠️", style=discord.ButtonStyle.secondary)
-    async def warn(self, interaction: discord.Interaction, button: Button):
-    await interaction.response.send_message("Use /warn command.", ephemeral=True)
+        await interaction.channel.edit(name=f"claimed-{interaction.user.name}")
+        button.disabled = True
+        await interaction.message.edit(view=self)
+        await interaction.response.send_message("✅ Ticket claimed.", ephemeral=True)
 
+    @discord.ui.button(label="⚠️ Warn User", style=discord.ButtonStyle.secondary, custom_id="warn_user")
+    async def warn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("Use `/warn @user minutes reason`", ephemeral=True)
 
-    @discord.ui.button(label="Close", emoji="🔒", style=discord.ButtonStyle.danger)
-    async def close(self, interaction: discord.Interaction, button: Button):
+    @discord.ui.button(label="🔒 Close Ticket", style=discord.ButtonStyle.danger, custom_id="close_ticket")
+    async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.channel.delete()
 
 class ClaimButton(Button):
@@ -462,14 +459,28 @@ class CloseButton(Button):
 @client.event
 async def on_ready():
     load_config()
+
     client.add_view(MainPanel())
-    client.add_view(TicketButtons())
     client.add_view(TierFormButton())
+    client.add_view(TicketButtons())
     client.add_view(ApplicationPanel())
+
     asyncio.create_task(auto_close_task())
     asyncio.create_task(warn_checker())
+
     await tree.sync(guild=discord.Object(id=GUILD_ID))
-    print("✅Bot Ready")
+    print("✅ Crystal Hub Bot Ready")
+
+@client.event
+async def on_message(message):
+    if message.author.bot:
+        return
+
+    if message.channel.id in warn_waiting:
+        data = warn_waiting[message.channel.id]
+        if message.author.id == data["user"]:
+            del warn_waiting[message.channel.id]
+            await message.channel.send("✅ User replied. Warning cleared.")
 
 # -------------------- COMMANDS --------------------
 @tree.command(name="warn", description="Warn user in ticket")
@@ -493,15 +504,19 @@ async def warn(interaction: discord.Interaction, user: discord.Member, minutes: 
 
 async def warn_checker():
     while True:
-        await asyncio.sleep(20)
+        await asyncio.sleep(15)
         now = discord.utils.utcnow().timestamp()
 
         for cid, data in list(warn_waiting.items()):
             if now > data["end"]:
                 channel = client.get_channel(cid)
                 member = channel.guild.get_member(data["user"])
+
+                await channel.send("⏰ No response. Ticket closing and user timed out.")
+
                 await member.timeout(datetime.timedelta(hours=1))
                 await channel.delete()
+
                 del warn_waiting[cid]
                 
 @tree.command(name="tier", description="Post official tier result", guild=discord.Object(id=GUILD_ID))
@@ -652,19 +667,22 @@ async def setup_applications(
         ephemeral=True
     )
 
-@tree.command(name="application_panel", description="Send staff application panel", guild=discord.Object(id=GUILD_ID))
+@tree.command(name="application_panel", guild=discord.Object(id=GUILD_ID))
 async def application_panel(interaction: discord.Interaction):
+
     embed = discord.Embed(
-        title="Crystal Hub • Staff Applications",
+        title="🛡️ Crystal Hub • Tester Staff Application",
         description=(
-            "Interested in becoming a **Crystal Hub Staff?**\n\n"
-            "Click the button below and fill the form.\n"
-            "Ensure all details are accurate before submitting."
+            "Become a part of the **Crystal Hub Staff Team**.\n\n"
+            "Click below and submit your application carefully."
         ),
-        color=discord.Color.purple()
+        color=discord.Color.blurple(),
     )
 
+    embed.set_image(url="https://media.giphy.com/media/oWWA8hYwrlk8Yrp6lo/giphy.gif")
+
     await interaction.response.send_message(embed=embed, view=ApplicationPanel())
+
 # -------------------- START BOT --------------------
 
 if __name__ == "__main__":
