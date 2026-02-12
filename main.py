@@ -115,49 +115,47 @@ class MainPanel(discord.ui.View):
         style=discord.ButtonStyle.blurple,
         custom_id="panel_tier_btn"
     )
-async def tier(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def tier(self, interaction: discord.Interaction, button: discord.ui.Button):
 
-    existing = find_existing_ticket(interaction.guild, interaction.user.id)
-    if existing:
+        existing = find_existing_ticket(interaction.guild, interaction.user.id)
+        if existing:
+            await interaction.response.send_message(
+                f"You already have a ticket: {existing.mention}",
+                ephemeral=True
+            )
+            return
+
+        category = interaction.guild.get_channel(ticket_config["category"])
+        staff_role = interaction.guild.get_role(ticket_config["staff_role"])
+
+        overwrites = {
+            interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True),
+            staff_role: discord.PermissionOverwrite(view_channel=True, send_messages=True),
+        }
+
+        channel = await category.create_text_channel(
+            name=f"tier-{interaction.user.name}",
+            overwrites=overwrites
+        )
+
+        ticket_owners[channel.id] = interaction.user.id
+
+        embed = discord.Embed(
+            title="🎫 Crystal Hub • Tier Test Ticket",
+            description=f"{interaction.user.mention}\n\nClick below and submit your Tier Test form.",
+            color=discord.Color.blurple(),
+        )
+        embed.set_image(url="https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif")
+
+        await channel.send(embed=embed, view=TierFormButton())
+        await channel.send(view=TicketButtons())
+
         await interaction.response.send_message(
-            f"You already have a ticket: {existing.mention}",
+            f"✅ Ticket created: {channel.mention}",
             ephemeral=True
         )
-        return
 
-    category = interaction.guild.get_channel(ticket_config["category"])
-    staff_role = interaction.guild.get_role(ticket_config["staff_role"])
-
-    overwrites = {
-        interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-        interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True),
-        staff_role: discord.PermissionOverwrite(view_channel=True, send_messages=True),
-    }
-
-    channel = await category.create_text_channel(
-        name=f"tier-{interaction.user.name}",
-        overwrites=overwrites
-    )
-
-    ticket_owners[channel.id] = interaction.user.id
-
-    embed = discord.Embed(
-        title="🎫 Crystal Hub • Tier Test Ticket",
-        description=(
-            f"{interaction.user.mention}\n\n"
-            "Click below and submit your Tier Test form."
-        ),
-        color=discord.Color.blurple(),
-    )
-    embed.set_image(url="https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif")
-
-    await channel.send(embed=embed, view=TierFormButton())
-    await channel.send(view=TicketButtons())
-
-    await interaction.response.send_message(
-        f"✅ Ticket created: {channel.mention}",
-        ephemeral=True
-    )
         except Exception as e:
             logger.error(e)
             await interaction.response.send_message(
@@ -188,31 +186,27 @@ async def tier(self, interaction: discord.Interaction, button: discord.ui.Button
 
             logger.info(f"Ticket created by {interaction.user}: Channel {channel_name}")
 
-        except Exception as e:
-            logger.error(f"Error creating or setting up ticket channel: {e}")
-            await interaction.response.send_message(
-                "Ticket channel created, but setup failed. Check bot permissions.",
-                ephemeral=True
-            )
-
 class TierModal(Modal, title="Tier Test Form"):
     mc = TextInput(label="Minecraft + Discord Username")
     age = TextInput(label="Age")
     region = TextInput(label="Region")
     mode = TextInput(label="Gamemode")
 
-async def on_submit(self, interaction: discord.Interaction):
-    embed = discord.Embed(
-        title="📋 Tier Test Submission",
-        color=discord.Color.green(),
-        timestamp=discord.utils.utcnow()
-    )
+    async def on_submit(self, interaction: discord.Interaction):
+        embed = discord.Embed(
+            title="📋 Tier Test Submission",
+            color=discord.Color.green(),
+            timestamp=discord.utils.utcnow()
+        )
 
-    for item in self.children:
-        embed.add_field(name=item.label, value=item.value, inline=False)
+        for item in self.children:
+            embed.add_field(name=item.label, value=item.value, inline=False)
 
-    await interaction.channel.send(embed=embed)
-    await interaction.response.send_message("✅ Tier form submitted to ticket.", ephemeral=True)
+        await interaction.channel.send(embed=embed)
+        await interaction.response.send_message(
+            "✅ Tier form submitted to ticket.",
+            ephemeral=True
+        )
 
 class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Tester Staff Application"):
 
