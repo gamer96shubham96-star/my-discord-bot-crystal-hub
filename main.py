@@ -172,23 +172,27 @@ class TierModal(Modal, title="Tier Test Form"):
     region = TextInput(label="Region")
     mode = TextInput(label="Gamemode")
 
-    async def on_submit(self, interaction: discord.Interaction):
-        embed = discord.Embed(
-            title="📋 Tier Test Submission",
-            color=discord.Color.green(),
-            timestamp=discord.utils.utcnow()
-        )
-
-        for item in self.children:
-            embed.add_field(name=item.label, value=item.value, inline=False)
-
-        await interaction.channel.send(embed=embed)
+async def on_submit(self, interaction: discord.Interaction):
+    if interaction.channel.id not in ticket_owners:
         await interaction.response.send_message(
-            "✅ Tier form submitted to ticket.",
+            "This form can only be used inside a ticket.",
             ephemeral=True
         )
+        return
 
-class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Tester Staff Application"):
+    embed = discord.Embed(
+        title="📋 Tier Test Submission",
+        color=discord.Color.green(),
+        timestamp=discord.utils.utcnow()
+    )
+
+    for item in self.children:
+        embed.add_field(name=item.label, value=item.value, inline=False)
+
+    await interaction.channel.send(embed=embed)
+    await interaction.response.send_message("✅ Tier form submitted.", ephemeral=True)
+
+class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Staff Application"):
 
     username = discord.ui.TextInput(
         label="Minecraft Username & Discord Tag",
@@ -213,18 +217,8 @@ class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Tester Staf
         max_length=80
     )
 
-    experience = discord.ui.TextInput(
-        label="PvP Experience (Years)",
-        max_length=20
-    )
-
     staff_exp = discord.ui.TextInput(
         label="Previous Staff Experience",
-        style=discord.TextStyle.paragraph
-    )
-
-    reason = discord.ui.TextInput(
-        label="Why Should Crystal Hub Select You As Tester?",
         style=discord.TextStyle.paragraph
     )
 
@@ -280,7 +274,8 @@ class RejectReasonModal(discord.ui.Modal, title="Application Rejection Reason"):
     def __init__(self, applicant_id: int):
         super().__init__()
         self.applicant_id = applicant_id
-
+        
+    @discord.ui.button(label="Reject", style=discord.ButtonStyle.red, custom_id="app_reject_btn")
     async def on_submit(self, interaction: discord.Interaction):
         user = interaction.guild.get_member(self.applicant_id)
 
@@ -302,7 +297,7 @@ class ApplicationReviewView(discord.ui.View):
         super().__init__(timeout=None)
         self.applicant_id = applicant_id
 
-    @discord.ui.button(label="Accept", style=discord.ButtonStyle.green)
+    @discord.ui.button(label="Accept", style=discord.ButtonStyle.green, custom_id="app_accept_btn")
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
 
         user = interaction.guild.get_member(self.applicant_id)
@@ -331,7 +326,11 @@ class ApplicationPanel(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Apply for Tester", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(
+        label="Apply for Staff",
+        style=discord.ButtonStyle.primary,
+        custom_id="apply_tester_button"  # REQUIRED
+    )
     async def apply(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(StaffApplicationModal())
 
@@ -438,6 +437,7 @@ async def on_ready():
     client.add_view(TierFormButton())
     client.add_view(TicketButtons())
     client.add_view(ApplicationPanel())
+    client.add_view(ApplicationReviewView(0))
 
     asyncio.create_task(auto_close_task())
     asyncio.create_task(warn_checker())
@@ -483,8 +483,12 @@ async def warn_checker():
 
         for cid, data in list(warn_waiting.items()):
             if now > data["end"]:
-                channel = client.get_channel(cid)
-                member = channel.guild.get_member(data["user"])
+channel = client.get_channel(cid)
+if not channel:
+    del warn_waiting[cid]
+    continue
+
+member = channel.guild.get_member(data["user"])
 
                 await channel.send("⏰ No response. Ticket closing and user timed out.")
 
@@ -596,18 +600,24 @@ async def setup_tickets(
     ticket_config["category"] = category.id
     ticket_config["staff_role"] = staff_role.id
     ticket_config["logs_channel"] = logs_channel.id
+    save_config()
+
     embed = discord.Embed(
         title="✅ Ticket System Configured",
-        description=f"Category: {category.mention}\nStaff Role: {staff_role.mention}\nLogs Channel: {logs_channel.mention}",
-        color=discord.Color.green(),
-        timestamp=discord.utils.utcnow()
+        description=(
+            f"Category: {category.mention}\n"
+            f"Staff Role: {staff_role.mention}\n"
+            f"Logs Channel: {logs_channel.mention}"
+        ),
+        color=discord.Color.green()
     )
-    embed.set_footer(text="Configuration completed", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+
+    embed.set_footer(text="✅ Configuration completed", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
     await interaction.response.send_message(embed=embed, ephemeral=True)
     # Log the setup
     logger.info(f"Ticket system configured by {interaction.user}: Category {category.name}, Staff Role {staff_role.name}, Logs Channel {logs_channel.name}")
     save_config()
-
+    
 @tree.command(name="panel", description="Send ticket panel", guild=discord.Object(id=GUILD_ID))
 async def panel(interaction: discord.Interaction):
     # Crazy hype text for the description
