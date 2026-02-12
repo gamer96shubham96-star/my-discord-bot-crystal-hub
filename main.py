@@ -580,7 +580,24 @@ async def setup_applications(interaction: discord.Interaction, logs_channel: dis
 
 @tree.command(name="panel", description="Send ticket panel", guild=discord.Object(id=GUILD_ID))
 async def panel(interaction: discord.Interaction):
-    # Crazy hype text for the description
-    crazy_text = "**🚀 Test Your Tier! 🚀**\n\n**CRYSTAL PVP,NETHPOT,SMP,SWORD ARE AVAILABLE,TEST NOW!**\n\n**💥 TEST & Give Your Best! 💥**\n\n**Select your region, choose your mode, and LET'S GET THIS PARTY STARTED!**\n\n**🔥 WARNING: DON'T
+
+    crazy_text = (
+        "**🚀 Test Your Tier! 🚀**\n\n"
+        "**CRYSTAL PVP • NETHPOT • SMP • SWORD AVAILABLE — TEST NOW!**\n\n"
+        "**💥 Give Your Absolute Best Performance! 💥**\n\n"
+        "Select your region, choose your mode, and let's get started.\n\n"
+        "**🔥 WARNING:** Do NOT waste staff time. Provide correct details only."
+    )
+
+    embed = discord.Embed(
+        title="🎫 Crystal Hub • Tier Test Panel",
+        description=crazy_text,
+        color=discord.Color.blurple()
+    )
+
+    embed.set_image(url="https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif")
+
+    await interaction.channel.send(embed=embed, view=MainPanel())
+    await interaction.response.send_message("✅ Panel sent.", ephemeral=True)
     
 client.run(TOKEN)
