@@ -199,7 +199,6 @@ async def tier(self, interaction: discord.Interaction, button: Button):
     )
     
      await channel.send(view=TierFormButton())
-
             welcome_embed = discord.Embed(
                 title="🎫 Welcome to Your Tier Test Ticket!",
                 description=(
