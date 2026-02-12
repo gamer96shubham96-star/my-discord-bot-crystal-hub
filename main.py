@@ -458,4 +458,100 @@ async def warn_checker():
         app_commands.Choice(name="Cracked", value="Cracked"),
     ],
     result=[
-       
+        app_commands.Choice(name="WON", value="WON"),
+        app_commands.Choice(name="LOST", value="LOST"),
+    ],
+)
+async def tier(
+    interaction: discord.Interaction,
+    tester: discord.Member,
+    user: discord.Member,
+    region: app_commands.Choice[str],
+    mode: app_commands.Choice[str],
+    account: app_commands.Choice[str],
+    previous_tier: str,
+    earned_tier: str,
+    score: str,
+    result: app_commands.Choice[str],
+):
+    # Exact custom formatted result message as requested, with enhanced markdown
+    result_text = f"""
+|| @everyone ||
+
+## ⛨ Crystal Hub {mode.value} Tier • OFFICIAL TIER RESULTS ⛨
+
+### ⚚ Tester
+{tester.mention}
+
+### ◈ Candidate
+{user.mention}
+
+### 🌍 Region
+{region.value}
+
+### ⛨ Gamemode
+{mode.value}
+
+### ⌬ Account Type
+{account.value}
+
+━━━━━━━━━━━━━━━━━━
+
+### ⬖ Previous Tier
+**{previous_tier}**
+
+### ⬗ Tier Achieved
+**{earned_tier}**
+
+### ✦ Match Score
+**{score}**
+
+━━━━━━━━━━━━━━━━━━
+
+## ⛨ RESULT: **{result.value}** ⛨
+
+**Think you can outperform this result?**  
+Test again in **1 month!**
+"""
+    # Create embed with the text as description and GIF as image
+    embed = discord.Embed(description=result_text, color=discord.Color.gold())
+    embed.set_image(url="https://media.giphy.com/media/oWWA8hYwrlk8Yrp6lo/giphy.gif")
+    await interaction.response.send_message(embed=embed)
+    # Log the action
+    logger.info(f"Tier result posted by {interaction.user}: Tester {tester}, User {user}, Result {result.value}")
+
+@tree.command(name="setup_tickets", description="Setup ticket system", guild=discord.Object(id=GUILD_ID))
+@app_commands.checks.has_permissions(administrator=True)
+async def setup_tickets(
+    interaction: discord.Interaction,
+    category: discord.CategoryChannel,
+    staff_role: discord.Role,
+    logs_channel: discord.TextChannel,
+):
+    ticket_config["category"] = category.id
+    ticket_config["staff_role"] = staff_role.id
+    ticket_config["logs_channel"] = logs_channel.id
+    save_config()
+
+    embed = discord.Embed(
+        title="✅ Ticket System Configured",
+        description=(
+            f"Category: {category.mention}\n"
+            f"Staff Role: {staff_role.mention}\n"
+            f"Logs Channel: {logs_channel.mention}"
+        ),
+        color=discord.Color.green()
+    )
+
+    embed.set_footer(text="✅ Configuration completed", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+    # Log the setup
+    logger.info(f"Ticket system configured by {interaction.user}: Category {category.name}, Staff Role {staff_role.name}, Logs Channel {logs_channel.name}")
+    save_config()
+
+@tree.command(name="panel", description="Send ticket panel", guild=discord.Object(id=GUILD_ID))
+async def panel(interaction: discord.Interaction):
+    # Crazy hype text for the description
+    crazy_text = "**🚀 Test Your Tier! 🚀**\n\n**CRYSTAL PVP,NETHPOT,SMP,SWORD ARE AVAILABLE,TEST NOW!**\n\n**💥 TEST & Give Your Best! 💥**\n\n**Select your region, choose your mode, and LET'S GET THIS PARTY STARTED!**\n\n**🔥 WARNING: DON'T WASTE STAFF TIME! 🔥**"
+
+    # Fun PvP/Gaming GIF URL (
