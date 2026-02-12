@@ -3,10 +3,11 @@ import io
 import asyncio
 import discord
 from discord import app_commands
-from discord.ui import View, Button, Select
+from discord.ui import View, Button, Modal, TextInput
 from dotenv import load_dotenv
 import logging
 import random
+import datetime
 
 # Set up logging for better debugging and professionalism
 logging.basicConfig(level=logging.INFO)
@@ -245,39 +246,32 @@ class MainPanel(View):
                 ephemeral=True
             )
 
-class RegionSelect(Select):
+class TierTestModal(Modal):
     def __init__(self):
-        options = [
-            discord.SelectOption(label="Asia", value="Asia"),
-            discord.SelectOption(label="Europe", value="Europe"),
-            discord.SelectOption(label="North America", value="North America"),
-            discord.SelectOption(label="South America", value="South America"),
-        ]
-        super().__init__(placeholder="Select Region", options=options, custom_id="tier_region_select")
+        super().__init__(title="Tier Test Request", timeout=None)
+        self.add_item(TextInput(label="Region", placeholder="Asia / Europe / North America / South America", max_length=50))
+        self.add_item(TextInput(label="Gamemode", placeholder="Crystal PvP / NethPot PvP / SMP PvP / Sword", max_length=50))
+        self.add_item(TextInput(label="Account Type", placeholder="Premium / Cracked", max_length=20))
 
-    async def callback(self, interaction: discord.Interaction):
-        key = (interaction.user.id, interaction.channel.id)
-        if key not in user_selections:
-            user_selections[key] = {}
-        user_selections[key]['region'] = self.values[0]
-        await interaction.response.defer()
+    async def on_submit(self, interaction: discord.Interaction):
+        region = self.children[0].value
+        mode = self.children[1].value
+        account = self.children[2].value
 
-class ModeSelect(Select):
-    def __init__(self):
-        options = [
-            discord.SelectOption(label="Crystal PvP", value="Crystal PvP"),
-            discord.SelectOption(label="NethPot PvP", value="NethPot PvP"),
-            discord.SelectOption(label="SMP PvP", value="SMP PvP"),
-            discord.SelectOption(label="Sword", value="Sword"),
-        ]
-        super().__init__(placeholder="Select Mode", options=options, custom_id="tier_mode_select")
+        embed = discord.Embed(
+            title="🎫 Tier Test Request Submitted",
+            description=f"Requester: {interaction.user.mention}\nRegion: {region}\nMode: {mode}\nAccount Type: {account}\n\n{random.choice(interesting_quotes)}",
+            color=discord.Color.orange(),
+            timestamp=discord.utils.utcnow()
+        )
+        embed.set_footer(text="Request submitted", icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+        await interaction.response.send_message(embed=embed)
 
-    async def callback(self, interaction: discord.Interaction):
-        key = (interaction.user.id, interaction.channel.id)
-        if key not in user_selections:
-            user_selections[key] = {}
-        user_selections[key]['mode'] = self.values[0]
-        await interaction.response.defer()
+        # Notify staff
+        if "staff_role" in ticket_config:
+            staff_role = interaction.guild.get_role(ticket_config["staff_role"])
+            if staff_role:
+                await interaction.followup.send(f"{staff_role.mention}, a new tier test request has been submitted!", ephemeral=True)
 
 class TierTicketView(View):
     def __init__(self):
@@ -480,6 +474,49 @@ async def on_message(message):
     await client.process_commands(message)
 
 # -------------------- COMMANDS --------------------
+@tree.command(name="warn", description="Warn a user in a ticket and auto-close the ticket after time.", guild=discord.Object(id=GUILD_ID))
+@app_commands.describe(
+    user="The user to warn",
+    duration="Time in minutes for timeout",
+    reason="Reason for warning"
+)
+@app_commands.checks.has_permissions(administrator=True)
+async def warn(interaction: discord.Interaction, user: discord.Member, duration: int, reason: str):
+    # Ensure ticket exists
+    ticket_channel = find_existing_ticket(interaction.guild, user.id)
+    if not ticket_channel:
+        await interaction.response.send_message(f"❌ {user.mention} has no active ticket.", ephemeral=True)
+        return
+
+    # Notify user in ticket
+    embed = discord.Embed(
+        title="⚠️ Warning Issued",
+        description=f"You have been warned by {interaction.user.mention} for: **{reason}**\nTicket will close in {duration} minutes.",
+        color=discord.Color.red(),
+        timestamp=discord.utils.utcnow()
+    )
+    await ticket_channel.send(content=user.mention, embed=embed)
+
+    await interaction.response.send_message(f"✅ {user.mention} warned and ticket will close in {duration} minutes.", ephemeral=True)
+
+    # Timeout user in guild
+    await user.timeout(duration=datetime.timedelta(minutes=duration), reason=reason)
+
+    # Wait duration and then delete ticket
+    await asyncio.sleep(duration * 60)
+    if ticket_channel.id in ticket_owners:
+        logs_channel = interaction.guild.get_channel(ticket_config.get("logs_channel"))
+        transcript = await generate_transcript(ticket_channel)
+        file = discord.File(io.StringIO(transcript), filename=f"transcript-{ticket_channel.name}.txt")
+        if logs_channel:
+            await logs_channel.send(embed=discord.Embed(
+                title="📝 Ticket Closed (Auto)",
+                description=f"Ticket for {user.mention} closed after warning timeout.",
+                color=discord.Color.red(),
+                timestamp=discord.utils.utcnow()
+            ), file=file)
+        ticket_owners.pop(ticket_channel.id)
+        await ticket_channel.delete()
 
 @tree.command(name="tier", description="Post official tier result", guild=discord.Object(id=GUILD_ID))
 @app_commands.describe(
