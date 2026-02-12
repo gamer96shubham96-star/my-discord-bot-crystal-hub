@@ -153,45 +153,52 @@ class MainPanel(View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="♛ Tier Test", style=discord.ButtonStyle.blurple, custom_id="panel_tier_btn")
-    async def tier(self, interaction: discord.Interaction, button: Button):
+@discord.ui.button(label="♛ Tier Test", style=discord.ButtonStyle.blurple, custom_id="panel_tier_btn")
+async def tier(self, interaction: discord.Interaction, button: Button):
 
-        if "category" not in ticket_config:
-            await interaction.response.send_message("Ticket system not configured.", ephemeral=True)
-            return
+    if "category" not in ticket_config:
+        await interaction.response.send_message("Ticket system not configured.", ephemeral=True)
+        return
 
-        existing = find_existing_ticket(interaction.guild, interaction.user.id)
-        if existing:
-            await interaction.response.send_message(
-                f"❌ You already have an open ticket: {existing.mention}",
-                ephemeral=True
-            )
-            return
+    existing = find_existing_ticket(interaction.guild, interaction.user.id)
+    if existing:
+        await interaction.response.send_message(
+            f"You already have a ticket: {existing.mention}",
+            ephemeral=True
+        )
+        return
 
-        category = interaction.guild.get_channel(ticket_config["category"])
+    category = interaction.guild.get_channel(ticket_config["category"])
+    staff_role = interaction.guild.get_role(ticket_config["staff_role"])
 
-        overwrites = {
-            interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            interaction.guild.get_role(ticket_config["staff_role"]): discord.PermissionOverwrite(read_messages=True, send_messages=True),
-            client.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
-        }
+    overwrites = {
+        interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
+        interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+        staff_role: discord.PermissionOverwrite(read_messages=True, send_messages=True),
+    }
 
-        try:
-            channel = await category.create_text_channel(
-                f"tier-test-{interaction.user.name}".lower().replace(" ", "-"),
-                overwrites=overwrites
-            )
+    channel = await category.create_text_channel(
+        f"tier-{interaction.user.name}".lower().replace(" ", "-"),
+        overwrites=overwrites
+    )
 
-            ticket_owners[channel.id] = interaction.user.id
+    ticket_owners[channel.id] = interaction.user.id
 
-            await channel.send(view=TicketButtons())
+    embed = discord.Embed(
+        title="🎫 Tier Test Ticket",
+        description="Click the button below and fill the form.",
+        color=discord.Color.blue()
+    )
 
-await interaction.response.send_message(
-    "✅ Ticket created. Please fill the form below.",
-    ephemeral=True
-)
-await channel.send(view=TierFormButton())
+    await channel.send(embed=embed, view=TierFormButton())
+    await channel.send(view=TicketButtons())
+
+    await interaction.response.send_message(
+        f"Ticket created: {channel.mention}",
+        ephemeral=True
+    )
+    
+     await channel.send(view=TierFormButton())
 
             welcome_embed = discord.Embed(
                 title="🎫 Welcome to Your Tier Test Ticket!",
@@ -250,28 +257,24 @@ await channel.send(view=TierFormButton())
 
 class TierRequestModal(discord.ui.Modal, title="Tier Test Request Form"):
 
-    mc_discord = TextInput(label="Minecraft & Discord Username", max_length=50)
-    age = TextInput(label="Age", max_length=3)
-    region = TextInput(label="Region (Asia / EU / NA / SA)", max_length=20)
-    mode = TextInput(label="Gamemode (Crystal / NethPot / SMP / Sword)", max_length=20)
-    hours = TextInput(label="Hours Available Daily", max_length=10)
+    mc_discord = TextInput(label="Minecraft & Discord Username")
+    age = TextInput(label="Age")
+    region = TextInput(label="Region")
+    mode = TextInput(label="Gamemode")
+    hours = TextInput(label="Daily Hours")
 
-async def on_submit(self, interaction: discord.Interaction):
-    embed = discord.Embed(
-        title="📋 Tier Test Request",
-        color=discord.Color.blue(),
-        timestamp=discord.utils.utcnow()
-    )
+    async def on_submit(self, interaction: discord.Interaction):
 
-    embed.add_field(name="User", value=interaction.user.mention, inline=False)
-    embed.add_field(name="MC + Discord", value=self.mc_discord.value, inline=False)
-    embed.add_field(name="Age", value=self.age.value, inline=True)
-    embed.add_field(name="Region", value=self.region.value, inline=True)
-    embed.add_field(name="Gamemode", value=self.mode.value, inline=True)
-    embed.add_field(name="Daily Hours", value=self.hours.value, inline=True)
+        embed = discord.Embed(
+            title="📋 Tier Test Submission",
+            color=discord.Color.green()
+        )
 
-    await interaction.channel.send(embed=embed)
-    await interaction.response.send_message("✅ Form submitted.", ephemeral=True)
+        for item in self.children:
+            embed.add_field(name=item.label, value=item.value, inline=False)
+
+        await interaction.channel.send(embed=embed)
+        await interaction.response.send_message("✅Staff Application Submitted.", ephemeral=True)
         # Clear selections
         # Open modal for detailed questions
         await interaction.response.send_modal(TierTestModal())
@@ -442,8 +445,18 @@ class ApplicationPanel(discord.ui.View):
 class TicketButtons(View):
     def __init__(self):
         super().__init__(timeout=None)
-        self.add_item(ClaimButton())
-        self.add_item(CloseButton())
+
+    @discord.ui.button(label="Claim", emoji="📌", style=discord.ButtonStyle.primary)
+    async def claim(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.send_message("Ticket claimed.", ephemeral=True)
+
+    @discord.ui.button(label="Warn", emoji="⚠️", style=discord.ButtonStyle.secondary)
+    async def warn(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.send_modal(WarnModal())
+
+    @discord.ui.button(label="Close", emoji="🔒", style=discord.ButtonStyle.danger)
+    async def close(self, interaction: discord.Interaction, button: Button):
+        await interaction.channel.delete()
 
 class ClaimButton(Button):
     def __init__(self):
@@ -526,6 +539,7 @@ async def on_ready():
     # Add persistent views to handle interactions even after restart
     client.add_view(MainPanel())
     client.add_view(TicketButtons())
+    asyncio.create_task(warn_checker())
     asyncio.create_task(auto_close_task())
     logger.info(f"✅ Logged in as {client.user}")
 
@@ -537,6 +551,11 @@ async def on_message(message):
     # Track ticket activity in servers
     if message.guild and message.channel.id in ticket_owners:
         last_activity[message.channel.id] = message.created_at.timestamp()
+
+if message.channel.id in warn_waiting:
+    if message.author.id == warn_waiting[message.channel.id]["user"]:
+        del warn_waiting[message.channel.id]
+        await message.channel.send("Warn cleared. User responded.")
 
     # If NOT DM → allow slash commands to work
     if not isinstance(message.channel, discord.DMChannel):
@@ -606,49 +625,38 @@ async def on_message(message):
     await client.process_commands(message)
 
 # -------------------- COMMANDS --------------------
-@tree.command(name="warn", description="Warn a user in a ticket and auto-close the ticket after time.", guild=discord.Object(id=GUILD_ID))
-@app_commands.describe(
-    user="The user to warn",
-    duration="Time in minutes for timeout",
-    reason="Reason for warning"
-)
-@app_commands.checks.has_permissions(administrator=True)
-async def warn(interaction: discord.Interaction, user: discord.Member, duration: int, reason: str):
-    # Ensure ticket exists
-    ticket_channel = find_existing_ticket(interaction.guild, user.id)
-    if not ticket_channel:
-        await interaction.response.send_message(f"❌ {user.mention} has no active ticket.", ephemeral=True)
+@tree.command(name="warn", description="Warn user in ticket")
+async def warn(interaction: discord.Interaction, user: discord.Member, minutes: int, reason: str):
+
+    channel = find_existing_ticket(interaction.guild, user.id)
+    if not channel:
+        await interaction.response.send_message("No ticket found.", ephemeral=True)
         return
 
-    # Notify user in ticket
-    embed = discord.Embed(
-        title="⚠️ Warning Issued",
-        description=f"You have been warned by {interaction.user.mention} for: **{reason}**\nTicket will close in {duration} minutes.",
-        color=discord.Color.red(),
-        timestamp=discord.utils.utcnow()
+    await channel.send(
+        f"{user.mention} ⚠️ {reason}\nReply within **{minutes} minutes** or ticket closes."
     )
-    await ticket_channel.send(content=user.mention, embed=embed)
 
-    await interaction.response.send_message(f"✅ {user.mention} warned and ticket will close in {duration} minutes.", ephemeral=True)
+    warn_waiting[channel.id] = {
+        "user": user.id,
+        "end": discord.utils.utcnow().timestamp() + (minutes * 60)
+    }
 
-    # Timeout user in guild
-    await user.timeout(duration=datetime.timedelta(minutes=duration), reason=reason)
+    await interaction.response.send_message("Warn sent.", ephemeral=True)
 
-    # Wait duration and then delete ticket
-    await asyncio.sleep(duration * 60)
-    if ticket_channel.id in ticket_owners:
-        logs_channel = interaction.guild.get_channel(ticket_config.get("logs_channel"))
-        transcript = await generate_transcript(ticket_channel)
-        file = discord.File(io.StringIO(transcript), filename=f"transcript-{ticket_channel.name}.txt")
-        if logs_channel:
-            await logs_channel.send(embed=discord.Embed(
-                title="📝 Ticket Closed (Auto)",
-                description=f"Ticket for {user.mention} closed after warning timeout.",
-                color=discord.Color.red(),
-                timestamp=discord.utils.utcnow()
-            ), file=file)
-        ticket_owners.pop(ticket_channel.id)
-        await ticket_channel.delete()
+async def warn_checker():
+    while True:
+        await asyncio.sleep(20)
+        now = discord.utils.utcnow().timestamp()
+
+        for cid, data in list(warn_waiting.items()):
+            if now > data["end"]:
+                channel = client.get_channel(cid)
+                member = channel.guild.get_member(data["user"])
+
+                await member.timeout(datetime.timedelta(hours=1))
+                await channel.delete()
+                del warn_waiting[cid]
 
 @tree.command(name="tier", description="Post official tier result", guild=discord.Object(id=GUILD_ID))
 @app_commands.describe(
