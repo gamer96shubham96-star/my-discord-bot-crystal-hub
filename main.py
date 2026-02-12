@@ -81,10 +81,10 @@ async def auto_close_task():
 
             try:
                 transcript_text = await generate_transcript(channel)
-                transcript_file = discord.File(
-                    fp=io.StringIO(transcript_text),
-                    filename=f"transcript-{channel.name}.txt"
-                )
+transcript_file = discord.File(
+    fp=io.BytesIO(transcript_text.encode()),
+    filename=f"transcript-{channel.name}.txt"
+)
 
                 owner_id = ticket_owners.get(cid, "Unknown")
 
@@ -299,27 +299,43 @@ class ApplicationReviewView(discord.ui.View):
     def __init__(self, applicant_id: int):
         super().__init__(timeout=None)
         self.applicant_id = applicant_id
+        self.handled = False
+
+    async def disable_all(self, interaction):
+        for child in self.children:
+            child.disabled = True
+        await interaction.message.edit(view=self)
 
     @discord.ui.button(label="Accept", style=discord.ButtonStyle.green, custom_id="app_accept_btn")
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
+
+        if self.handled:
+            await interaction.response.send_message("Already handled.", ephemeral=True)
+            return
+
+        self.handled = True
 
         user = interaction.guild.get_member(self.applicant_id)
 
         try:
             await user.send(
-                "🎉 Congratulations!\n\n"
-                "Your Tester Application at **Crystal Hub** has been **ACCEPTED**.\n"
-                "A staff member will contact you shortly."
+                "🎉 Your Tester Application at **Crystal Hub** has been **ACCEPTED**."
             )
         except:
             pass
 
-        button.disabled = True
-        await interaction.message.edit(view=self)
-        await interaction.response.send_message("Applicant accepted and notified.", ephemeral=True)
+        await self.disable_all(interaction)
+        await interaction.response.send_message("Applicant accepted.", ephemeral=True)
 
-    @discord.ui.button(label="Reject", style=discord.ButtonStyle.red)
+    @discord.ui.button(label="Reject", style=discord.ButtonStyle.red, custom_id="app_reject_btn")
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
+
+        if self.handled:
+            await interaction.response.send_message("Already handled.", ephemeral=True)
+            return
+
+        self.handled = True
+        await self.disable_all(interaction)
         await interaction.response.send_modal(RejectReasonModal(self.applicant_id))
 
 # ================= APPLICATION PANEL =================
@@ -394,8 +410,12 @@ async def on_message(message):
             del warn_waiting[message.channel.id]
             await message.channel.send("✅ User replied. Warning cleared.")
 
-# -------------------- COMMANDS --------------------
-@tree.command(name="warn", description="Warn user in ticket")
+# -------------------- COMMANDS --------------------@tree.command(
+@tree.command(
+    name="warn",
+    description="Warn user in ticket",
+    guild=discord.Object(id=GUILD_ID)
+)
 async def warn(interaction: discord.Interaction, user: discord.Member, minutes: int, reason: str):
 
     channel = find_existing_ticket(interaction.guild, user.id)
