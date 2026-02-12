@@ -383,6 +383,11 @@ async def on_message(message):
     if message.author.bot:
         return
 
+    # update ticket activity
+    if message.channel.id in ticket_owners:
+        last_activity[message.channel.id] = discord.utils.utcnow().timestamp()
+
+    # warn system
     if message.channel.id in warn_waiting:
         data = warn_waiting[message.channel.id]
         if message.author.id == data["user"]:
@@ -552,9 +557,30 @@ async def setup_tickets(
     await interaction.response.send_message(embed=embed, ephemeral=True)
     # Log the setup
     logger.info(f"Ticket system configured by {interaction.user}: Category {category.name}, Staff Role {staff_role.name}, Logs Channel {logs_channel.name}")
+    
+@tree.command(name="application_panel", description="Send staff application panel", guild=discord.Object(id=GUILD_ID))
+async def application_panel(interaction: discord.Interaction):
+    embed = discord.Embed(
+        title="📝 Crystal Hub • Staff Tester Applications",
+        description="Click the button below to apply for Staff Tester.",
+        color=discord.Color.blue()
+    )
+    await interaction.channel.send(embed=embed, view=ApplicationPanel())
+    await interaction.response.send_message("Panel sent.", ephemeral=True)
+
+@tree.command(name="setup_applications", description="Setup application logs", guild=discord.Object(id=GUILD_ID))
+@app_commands.checks.has_permissions(administrator=True)
+async def setup_applications(interaction: discord.Interaction, logs_channel: discord.TextChannel):
+    application_config["logs_channel"] = logs_channel.id
+    save_config()
+    await interaction.response.send_message(
+        f"✅ Application logs channel set to {logs_channel.mention}",
+        ephemeral=True
+    )
 
 @tree.command(name="panel", description="Send ticket panel", guild=discord.Object(id=GUILD_ID))
 async def panel(interaction: discord.Interaction):
     # Crazy hype text for the description
     crazy_text = "**🚀 Test Your Tier! 🚀**\n\n**CRYSTAL PVP,NETHPOT,SMP,SWORD ARE AVAILABLE,TEST NOW!**\n\n**💥 TEST & Give Your Best! 💥**\n\n**Select your region, choose your mode, and LET'S GET THIS PARTY STARTED!**\n\n**🔥 WARNING: DON'T
     
+client.run(TOKEN)
