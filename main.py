@@ -243,59 +243,60 @@ class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Staff Appli
 
     async def on_submit(self, interaction: discord.Interaction):
 
-    if "logs_channel" not in application_config:
-        await interaction.response.send_message(
-            "Applications are not configured yet.",
+        if "logs_channel" not in application_config:
+            await interaction.response.send_message(
+                "Applications are not configured yet.",
+                ephemeral=True
+            )
+            return
+
+        if active_applications.get(interaction.user.id):
+            await interaction.response.send_message(
+                "You already have a pending application.",
+                ephemeral=True
+            )
+            return
+
+        now = discord.utils.utcnow().timestamp()
+        last_time = application_times.get(interaction.user.id)
+
+        if last_time and now - last_time < APPLICATION_COOLDOWN:
+            remaining = int((APPLICATION_COOLDOWN - (now - last_time)) / 3600)
+            await interaction.response.send_message(
+                f"You can apply again in {remaining} hours.",
+                ephemeral=True
+            )
+            return
+
+        application_times[interaction.user.id] = now
+        active_applications[interaction.user.id] = True
+
+        await interaction.response.defer(ephemeral=True)
+
+        embed = discord.Embed(
+            title="📝 Crystal Hub • Staff Application",
+            description="A new professional staff application has been submitted.",
+            color=discord.Color.blue(),
+            timestamp=discord.utils.utcnow()
+        )
+
+        embed.add_field(name="Applicant", value=interaction.user.mention, inline=False)
+
+        for item in self.children:
+            embed.add_field(name=item.label, value=item.value, inline=False)
+
+        embed.set_image(url="https://media.giphy.com/media/3o7TKtnuHOHHUjR38Y/giphy.gif")
+
+        logs = interaction.guild.get_channel(application_config["logs_channel"])
+        view = ApplicationReviewView(interaction.user.id)
+
+        await logs.send(embed=embed, view=view)
+
+        await interaction.followup.send(
+            "✅ Your application has been submitted to Crystal Hub Staff Team.",
             ephemeral=True
         )
-        return
 
-    if active_applications.get(interaction.user.id):
-        await interaction.response.send_message(
-            "You already have a pending application.",
-            ephemeral=True
-        )
-        return
-
-    now = discord.utils.utcnow().timestamp()
-    last_time = application_times.get(interaction.user.id)
-
-    if last_time and now - last_time < APPLICATION_COOLDOWN:
-        remaining = int((APPLICATION_COOLDOWN - (now - last_time)) / 3600)
-        await interaction.response.send_message(
-            f"You can apply again in {remaining} hours.",
-            ephemeral=True
-        )
-        return
-
-    application_times[interaction.user.id] = now
-    active_applications[interaction.user.id] = True
-
-    await interaction.response.defer(ephemeral=True)
-
-    embed = discord.Embed(
-        title="📝 Crystal Hub • Staff Application",
-        description="A new professional staff application has been submitted.",
-        color=discord.Color.blue(),
-        timestamp=discord.utils.utcnow()
-    )
-
-    embed.add_field(name="Applicant", value=interaction.user.mention, inline=False)
-
-    for item in self.children:
-        embed.add_field(name=item.label, value=item.value, inline=False)
-
-    embed.set_image(url="https://giphy.com/gifs/si6Hi6LU2dR3r5JlsL/giphy.gif")
-
-    logs = interaction.guild.get_channel(application_config["logs_channel"])
-    view = ApplicationReviewView(interaction.user.id)
-
-    await logs.send(embed=embed, view=view)
-
-    await interaction.followup.send(
-        "✅ Your application has been submitted to Crystal Hub Staff Team.",
-        ephemeral=True
-    )
 # ================= REJECT REASON MODAL =================
 
 class RejectReasonModal(discord.ui.Modal, title="Application Rejection Reason"):
