@@ -285,7 +285,7 @@ class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Staff Appli
         for item in self.children:
             embed.add_field(name=item.label, value=item.value, inline=False)
 
-        embed.set_image(url="https://media.giphy.com/media/si6Hi6LU2dR3r5JlsL/giphy.gif")
+        embed.set_image(url="https://media.giphy.com/media/viral-giph-staff-application-text-c9P1lz0XJsjwQh0L6U/giphy.gif")
 
         logs = interaction.guild.get_channel(application_config["logs_channel"])
         view = ApplicationReviewView(interaction.user.id)
@@ -647,7 +647,7 @@ async def application_panel(interaction: discord.Interaction):
         color=discord.Color.blue()
     )
 
-    embed.set_image(url="https://media.giphy.com/media/si6Hi6LU2dR3r5JlsL/giphy.gif")
+    embed.set_image(url="https://media.giphy.com/media/viral-giph-staff-application-text-c9P1lz0XJsjwQh0L6U/giphy.gif")
 
     await interaction.channel.send(embed=embed, view=ApplicationPanel())
     await interaction.response.send_message("Panel sent.", ephemeral=True)
