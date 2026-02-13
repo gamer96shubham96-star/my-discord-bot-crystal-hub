@@ -211,21 +211,27 @@ class TierModal(discord.ui.Modal, title="Tier Test Form"):
         self.add_item(self.gamemode)
 
     async def on_submit(self, interaction: discord.Interaction):
-    tier_filled[self.parent_view.channel_id] = True
+        tier_filled[self.parent_view.channel_id] = True
 
-    for child in self.parent_view.children:
-        child.disabled = True
+        for child in self.parent_view.children:
+            child.disabled = True
 
-    await interaction.message.edit(view=self.parent_view)
+        await interaction.message.edit(view=self.parent_view)
 
-    embed = discord.Embed(title="📋 Tier Test Submission", color=discord.Color.green())
-    embed.add_field(name="Username", value=self.username.value, inline=False)
-    embed.add_field(name="Age", value=self.age.value, inline=False)
-    embed.add_field(name="Region", value=self.region.value, inline=False)
-    embed.add_field(name="Gamemode", value=self.gamemode.value, inline=False)
+        embed = discord.Embed(
+            title="📋 Tier Test Submission",
+            color=discord.Color.green()
+        )
+        embed.add_field(name="Username", value=self.username.value, inline=False)
+        embed.add_field(name="Age", value=self.age.value, inline=False)
+        embed.add_field(name="Region", value=self.region.value, inline=False)
+        embed.add_field(name="Gamemode", value=self.gamemode.value, inline=False)
 
-    await interaction.channel.send(embed=embed)
-    await interaction.response.send_message("✅ Tier form submitted.", ephemeral=True)
+        await interaction.channel.send(embed=embed)
+        await interaction.response.send_message(
+            "✅ Tier form submitted.",
+            ephemeral=True
+        )
 
 #---------------------------------------------------------------------------------------
 class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Staff Application"):
