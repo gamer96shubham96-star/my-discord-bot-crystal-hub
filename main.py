@@ -206,32 +206,33 @@ class TierModal(discord.ui.Modal, title="Tier Test Form"):
         self.add_item(self.age)
         self.add_item(self.region)
         self.add_item(self.gamemode)
+async def on_submit(self, interaction: discord.Interaction):
 
-    async def on_submit(self, interaction: discord.Interaction):
+    tier_filled[self.parent_view.channel_id] = True
 
-        tier_filled[self.parent_view.channel_id] = True
+    embed = discord.Embed(
+        title="📋 Tier Test Submission",
+        color=discord.Color.green()
+    )
 
-        embed = discord.Embed(
-            title="📋 Tier Test Submission",
-            color=discord.Color.green()
-        )
+    embed.add_field(name="Username", value=self.username.value, inline=False)
+    embed.add_field(name="Age", value=self.age.value, inline=False)
+    embed.add_field(name="Region", value=self.region.value, inline=False)
+    embed.add_field(name="Gamemode", value=self.gamemode.value, inline=False)
 
-        embed.add_field(name="Username", value=self.username.value, inline=False)
-        embed.add_field(name="Age", value=self.age.value, inline=False)
-        embed.add_field(name="Region", value=self.region.value, inline=False)
-        embed.add_field(name="Gamemode", value=self.gamemode.value, inline=False)
+    await interaction.channel.send(embed=embed)
 
-        await interaction.channel.send(embed=embed)
+    # disable button
+    for child in self.parent_view.children:
+        child.disabled = True
 
-        for child in self.parent_view.children:
-            child.disabled = True
+    # find the message that has the button and edit it
+    async for msg in interaction.channel.history(limit=20):
+        if msg.components:
+            await msg.edit(view=self.parent_view)
+            break
 
-channel = interaction.channel
-async for msg in channel.history(limit=20):
-    if msg.components:
-        await msg.edit(view=self.parent_view)
-        break
-        await interaction.response.send_message("✅ Tier form submitted.", ephemeral=True)
+    await interaction.response.send_message("✅ Tier form submitted.", ephemeral=True)
 
 #---------------------------------------------------------------------------------------
 class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Staff Application"):
@@ -264,7 +265,7 @@ class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Staff Appli
         style=discord.TextStyle.paragraph
     )
 
-    async def on_submit(self, interaction: discord.Interaction):
+async def on_submit(self, interaction: discord.Interaction):
 
     if "logs_channel" not in application_config:
         await interaction.response.send_message(
@@ -296,29 +297,29 @@ class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Staff Appli
 
     await interaction.response.defer(ephemeral=True)
 
-        embed = discord.Embed(
-            title="📝 Crystal Hub • Staff Application",
-            description="A new professional staff application has been submitted.",
-            color=discord.Color.blue(),
-            timestamp=discord.utils.utcnow()
-        )
+    embed = discord.Embed(
+        title="📝 Crystal Hub • Staff Application",
+        description="A new professional staff application has been submitted.",
+        color=discord.Color.blue(),
+        timestamp=discord.utils.utcnow()
+    )
 
-        embed.add_field(name="Applicant", value=interaction.user.mention, inline=False)
+    embed.add_field(name="Applicant", value=interaction.user.mention, inline=False)
 
-        for item in self.children:
-            embed.add_field(name=item.label, value=item.value, inline=False)
+    for item in self.children:
+        embed.add_field(name=item.label, value=item.value, inline=False)
 
-        embed.set_image(url="https://giphy.com/gifs/si6Hi6LU2dR3r5JlsL/giphy.gif")
+    embed.set_image(url="https://giphy.com/gifs/si6Hi6LU2dR3r5JlsL/giphy.gif")
 
-        logs = interaction.guild.get_channel(application_config["logs_channel"])
-        view = ApplicationReviewView(interaction.user.id)
+    logs = interaction.guild.get_channel(application_config["logs_channel"])
+    view = ApplicationReviewView(interaction.user.id)
 
-        await logs.send(embed=embed, view=view)
+    await logs.send(embed=embed, view=view)
 
-        await interaction.followup.send(
-            "✅ Your application has been submitted to Crystal Hub Staff Team.",
-            ephemeral=True
-        )
+    await interaction.followup.send(
+        "✅ Your application has been submitted to Crystal Hub Staff Team.",
+        ephemeral=True
+    )
 # ================= REJECT REASON MODAL =================
 
 class RejectReasonModal(discord.ui.Modal, title="Application Rejection Reason"):
