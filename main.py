@@ -285,7 +285,8 @@ class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Staff Appli
         for item in self.children:
             embed.add_field(name=item.label, value=item.value, inline=False)
 
-        embed.set_image(url="https://media.giphy.com/media/viral-giph-staff-application-text-c9P1lz0XJsjwQh0L6U/giphy.gif")
+        embed.set_image(url="https://media.giphy.com/media/c9P1lz0XJsjwQh0L6U/giphy.gif")
+
 
         logs = interaction.guild.get_channel(application_config["logs_channel"])
         view = ApplicationReviewView(interaction.user.id)
@@ -420,17 +421,28 @@ class TicketButtons(discord.ui.View):
     @discord.ui.button(label="🔒 Close Ticket", style=discord.ButtonStyle.danger, custom_id="close_ticket")
     async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
 
-        await interaction.response.send_message("🔒 Closing in 2 seconds...")
+    staff_role = interaction.guild.get_role(ticket_config["staff_role"])
 
-        logs = interaction.guild.get_channel(ticket_config["logs_channel"])
-        transcript = await generate_transcript(interaction.channel)
-        file = discord.File(io.BytesIO(transcript.encode()), filename="transcript.txt")
+    # ❌ If not staff → block
+    if staff_role not in interaction.user.roles:
+        await interaction.response.send_message(
+            "❌ Only Crystal Hub Staff can close tickets.",
+            ephemeral=True
+        )
+        return
 
-        if logs:
-            await logs.send(f"Transcript of {interaction.channel.name}", file=file)
+    await interaction.response.send_message("🔒 Closing in 2 seconds...")
 
-        await asyncio.sleep(2)
-        await interaction.channel.delete()
+    logs = interaction.guild.get_channel(ticket_config["logs_channel"])
+    transcript = await generate_transcript(interaction.channel)
+    file = discord.File(io.BytesIO(transcript.encode()), filename="transcript.txt")
+
+    if logs:
+        await logs.send(f"Transcript of {interaction.channel.name}", file=file)
+
+    await asyncio.sleep(2)
+    await interaction.channel.delete()
+
 
 # -------------------- EVENTS --------------------
 
@@ -637,17 +649,17 @@ async def setup_tickets(
 async def application_panel(interaction: discord.Interaction):
 
     embed = discord.Embed(
-        title="📝 Crystal Hub • Staff Tester Applications",
+        title="📝 𝓒𝓻𝔂𝓼𝓽𝓪𝓵 𝓗𝓾𝓫 • 𝓢𝓽𝓪𝓯𝓯 𝓣𝓮𝓼𝓽𝓮𝓻 𝓐𝓹𝓹𝓵𝓲𝓬𝓪𝓽𝓲𝓸𝓷𝓼",
         description=(
-            "**Join the Crystal Hub Testing Team**\n\n"
-            "We are looking for skilled and professional testers\n"
-            "for Crystal, NethPot, SMP and Sword PvP modes.\n\n"
-            "Click the button below to submit your application."
+            "**𝓙𝓸𝓲𝓷 𝓽𝓱𝓮 𝓒𝓻𝔂𝓼𝓽𝓪𝓵 𝓗𝓾𝓫 𝓣𝓮𝓼𝓽𝓲𝓷𝓰 𝓣𝓮𝓪𝓶**\n\n"
+            "𝓦𝓮 𝓪𝓻𝓮 𝓵𝓸𝓸𝓴𝓲𝓷𝓰 𝓯𝓸𝓻 𝓼𝓴𝓲𝓵𝓵𝓮𝓭 𝓪𝓷𝓭 𝓹𝓻𝓸𝓯𝓮𝓼𝓼𝓲𝓸𝓷𝓪𝓵 𝓽𝓮𝓼𝓽𝓮𝓻𝓼\n"
+            "𝓕𝓸𝓻 𝓒𝓻𝔂𝓼𝓽𝓪𝓵, 𝓝𝓮𝓽𝓱𝓟𝓸𝓽, 𝓢𝓜𝓟 𝓪𝓷𝓭 𝓢𝔀𝓸𝓻𝓭 𝓟𝓿𝓟 𝓶𝓸𝓭𝓮𝓼.\n\n"
+            "𝓒𝓵𝓲𝓬𝓴 𝓽𝓱𝓮 𝓫𝓾𝓽𝓽𝓸𝓷 𝓫𝓮𝓵𝓸𝔀 𝓽𝓸 𝓼𝓾𝓫𝓶𝓲𝓽 𝔂𝓸𝓾𝓻 𝓪𝓹𝓹𝓵𝓲𝓬𝓪𝓽𝓲𝓸𝓷."
         ),
         color=discord.Color.blue()
     )
 
-    embed.set_image(url="https://media.giphy.com/media/viral-giph-staff-application-text-c9P1lz0XJsjwQh0L6U/giphy.gif")
+    embed.set_image(url="https://media.giphy.com/media/c9P1lz0XJsjwQh0L6U/giphy.gif")
 
     await interaction.channel.send(embed=embed, view=ApplicationPanel())
     await interaction.response.send_message("Panel sent.", ephemeral=True)
