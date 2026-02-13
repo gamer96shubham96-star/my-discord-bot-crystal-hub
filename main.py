@@ -206,66 +206,42 @@ class TierModal(discord.ui.Modal, title="Tier Test Form"):
         self.add_item(self.age)
         self.add_item(self.region)
         self.add_item(self.gamemode)
-async def on_submit(self, interaction: discord.Interaction):
 
-    tier_filled[self.parent_view.channel_id] = True
+    async def on_submit(self, interaction: discord.Interaction):
+        tier_filled[self.parent_view.channel_id] = True
 
-    embed = discord.Embed(
-        title="📋 Tier Test Submission",
-        color=discord.Color.green()
-    )
+        embed = discord.Embed(title="📋 Tier Test Submission", color=discord.Color.green())
+        embed.add_field(name="Username", value=self.username.value, inline=False)
+        embed.add_field(name="Age", value=self.age.value, inline=False)
+        embed.add_field(name="Region", value=self.region.value, inline=False)
+        embed.add_field(name="Gamemode", value=self.gamemode.value, inline=False)
 
-    embed.add_field(name="Username", value=self.username.value, inline=False)
-    embed.add_field(name="Age", value=self.age.value, inline=False)
-    embed.add_field(name="Region", value=self.region.value, inline=False)
-    embed.add_field(name="Gamemode", value=self.gamemode.value, inline=False)
+        await interaction.channel.send(embed=embed)
 
-    await interaction.channel.send(embed=embed)
+        for child in self.parent_view.children:
+            child.disabled = True
 
-    # disable button
-    for child in self.parent_view.children:
-        child.disabled = True
-
-    # find the message that has the button and edit it
-    async for msg in interaction.channel.history(limit=20):
-        if msg.components:
-            await msg.edit(view=self.parent_view)
-            break
-
-    await interaction.response.send_message("✅ Tier form submitted.", ephemeral=True)
-
+        await interaction.message.edit(view=self.parent_view)
+        await interaction.response.send_message("✅ Tier form submitted.", ephemeral=True)
 #---------------------------------------------------------------------------------------
 class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Staff Application"):
 
-    username = discord.ui.TextInput(
-        label="Minecraft Username & Discord Tag",
-        placeholder="Example: Shubham96 | qbhsihekyt_11",
-        max_length=60
-    )
+    def __init__(self):
+        super().__init__()
 
-    age = discord.ui.TextInput(
-        label="Age",
-        max_length=3
-    )
+        self.username = TextInput(label="Minecraft Username & Discord Tag", max_length=60)
+        self.age = TextInput(label="Age", max_length=3)
+        self.region = TextInput(label="Region / Timezone", max_length=40)
+        self.gamemodes = TextInput(label="Gamemodes You Can Professionally Test", max_length=80)
+        self.staff_exp = TextInput(label="Previous Staff Experience", style=discord.TextStyle.paragraph)
 
-    region = discord.ui.TextInput(
-        label="Region / Timezone",
-        placeholder="Example: Asia / IST",
-        max_length=40
-    )
+        self.add_item(self.username)
+        self.add_item(self.age)
+        self.add_item(self.region)
+        self.add_item(self.gamemodes)
+        self.add_item(self.staff_exp)
 
-    gamemodes = discord.ui.TextInput(
-        label="Gamemodes You Can Professionally Test",
-        placeholder="Crystal, NethPot, SMP, Sword",
-        max_length=80
-    )
-
-    staff_exp = discord.ui.TextInput(
-        label="Previous Staff Experience",
-        style=discord.TextStyle.paragraph
-    )
-
-async def on_submit(self, interaction: discord.Interaction):
+    async def on_submit(self, interaction: discord.Interaction):
 
     if "logs_channel" not in application_config:
         await interaction.response.send_message(
