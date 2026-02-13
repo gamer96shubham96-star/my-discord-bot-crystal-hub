@@ -647,7 +647,7 @@ async def application_panel(interaction: discord.Interaction):
         color=discord.Color.blue()
     )
 
-    embed.set_image(url="https://giphy.com/gifs/si6Hi6LU2dR3r5JlsL/giphy.gif")
+    embed.set_image(url="https://media.giphy.com/media/si6Hi6LU2dR3r5JlsL/giphy.gif")
 
     await interaction.channel.send(embed=embed, view=ApplicationPanel())
     await interaction.response.send_message("Panel sent.", ephemeral=True)
