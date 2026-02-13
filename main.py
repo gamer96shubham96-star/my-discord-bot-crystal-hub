@@ -27,6 +27,8 @@ application_config = {}
 ticket_owners = {}
 warn_waiting = {}
 tier_filled = {}
+APPLICATION_COOLDOWN = 86400
+application_times = {}
 active_applications = {}
 last_activity = {}
 
@@ -221,14 +223,15 @@ class TierModal(discord.ui.Modal, title="Tier Test Form"):
 
         await interaction.channel.send(embed=embed)
 
-        # disable button forever
         for child in self.parent_view.children:
             child.disabled = True
 
-        await interaction.channel.send(view=self.parent_view)
-
+channel = interaction.channel
+async for msg in channel.history(limit=20):
+    if msg.components:
+        await msg.edit(view=self.parent_view)
+        break
         await interaction.response.send_message("✅ Tier form submitted.", ephemeral=True)
-
 
 #---------------------------------------------------------------------------------------
 class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Staff Application"):
@@ -263,21 +266,35 @@ class StaffApplicationModal(discord.ui.Modal, title="Crystal Hub • Staff Appli
 
     async def on_submit(self, interaction: discord.Interaction):
 
-        if "logs_channel" not in application_config:
-            await interaction.response.send_message(
-                "Applications are not configured yet.",
-                ephemeral=True
-            )
-            return
+    if "logs_channel" not in application_config:
+        await interaction.response.send_message(
+            "Applications are not configured yet.",
+            ephemeral=True
+        )
+        return
 
-        if active_applications.get(interaction.user.id):
-            await interaction.response.send_message(
-                "You already have a pending application.",
-                ephemeral=True
-            )
-            return
-            
-        await interaction.response.defer(ephemeral=True)
+    if active_applications.get(interaction.user.id):
+        await interaction.response.send_message(
+            "You already have a pending application.",
+            ephemeral=True
+        )
+        return
+
+    now = discord.utils.utcnow().timestamp()
+    last_time = application_times.get(interaction.user.id)
+
+    if last_time and now - last_time < APPLICATION_COOLDOWN:
+        remaining = int((APPLICATION_COOLDOWN - (now - last_time)) / 3600)
+        await interaction.response.send_message(
+            f"You can apply again in {remaining} hours.",
+            ephemeral=True
+        )
+        return
+
+    application_times[interaction.user.id] = now
+    active_applications[interaction.user.id] = True
+
+    await interaction.response.defer(ephemeral=True)
 
         embed = discord.Embed(
             title="📝 Crystal Hub • Staff Application",
@@ -357,6 +374,8 @@ class ApplicationReviewView(discord.ui.View):
 
         self.handled = True
 
+        active_applications.pop(self.applicant_id, None)
+        
         user = interaction.guild.get_member(self.applicant_id)
 
         try:
@@ -638,11 +657,20 @@ async def setup_tickets(
     
 @tree.command(name="application_panel", description="Send staff application panel", guild=discord.Object(id=GUILD_ID))
 async def application_panel(interaction: discord.Interaction):
+
     embed = discord.Embed(
         title="📝 Crystal Hub • Staff Tester Applications",
-        description="Click the button below to apply for Staff Tester.",
+        description=(
+            "**Join the Crystal Hub Testing Team**\n\n"
+            "We are looking for skilled and professional testers\n"
+            "for Crystal, NethPot, SMP and Sword PvP modes.\n\n"
+            "Click the button below to submit your application."
+        ),
         color=discord.Color.blue()
     )
+
+    embed.set_image(url="https://media.giphy.com/media/3o7TKtnuHOHHUjR38Y/giphy.gif")
+
     await interaction.channel.send(embed=embed, view=ApplicationPanel())
     await interaction.response.send_message("Panel sent.", ephemeral=True)
 
