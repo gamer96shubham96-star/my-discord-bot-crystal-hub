@@ -417,9 +417,9 @@ class TicketButtons(discord.ui.View):
     @discord.ui.button(label="⚠️ Warn User", style=discord.ButtonStyle.secondary, custom_id="warn_user")
     async def warn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_message("Use `/warn @user minutes reason`", ephemeral=True)
-
-@discord.ui.button(label="🔒 Close Ticket", style=discord.ButtonStyle.danger, custom_id="close_ticket")
-async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
+        
+    @discord.ui.button(label="🔒 Close Ticket", style=discord.ButtonStyle.danger, custom_id="close_ticket")
+    async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
 
     staff_role = interaction.guild.get_role(ticket_config["staff_role"])
 
