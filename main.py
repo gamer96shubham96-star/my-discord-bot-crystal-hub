@@ -818,6 +818,6 @@ async def panel(interaction: discord.Interaction):
     embed.set_image(url="https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif")
 
     await interaction.channel.send(embed=embed, view=MainPanel())
-    await interaction.response.send_message("✅ anel sent.", ephemeral=True)
+    await interaction.response.send_message("✅ Panel sent.", ephemeral=True)
     
 client.run(TOKEN)
