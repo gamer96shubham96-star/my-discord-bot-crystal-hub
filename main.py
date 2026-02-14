@@ -392,37 +392,37 @@ class ApplicationReviewView(discord.ui.View):
     @discord.ui.button(label="Accept", style=discord.ButtonStyle.green, custom_id="app_accept_unique")
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
 
-    if self.handled:
-        await interaction.response.send_message("Already handled.", ephemeral=True)
-        return
+        if self.handled:
+            await interaction.response.send_message("Already handled.", ephemeral=True)
+            return
 
-    self.handled = True
-    active_applications.pop(self.applicant_id, None)
+        self.handled = True
+        active_applications.pop(self.applicant_id, None)
 
-    user = interaction.guild.get_member(self.applicant_id)
-    tester_role = discord.utils.get(interaction.guild.roles, name="Tester")
+        user = interaction.guild.get_member(self.applicant_id)
+        tester_role = discord.utils.get(interaction.guild.roles, name="Tester")
 
-    if tester_role and user:
-        try:
-            await user.add_roles(tester_role)
-        except:
-            pass
+        if tester_role and user:
+            try:
+                await user.add_roles(tester_role)
+            except:
+                pass
 
-        try:
-            await user.send(
-    "🎉 **Application Status: APPROVED**\n\n"
-    "After a full review by the Crystal Hub Administration Team, "
-    "your Tester Application has been **successfully approved**.\n\n"
-    "We believe you have the skill level and professionalism required "
-    "to represent our competitive standards.\n\n"
-    "⚜ Please maintain high integrity and fairness in all evaluations.\n\n"
-    "Welcome to Crystal Hub."
-)
-        except:
-            pass
+            try:
+                await user.send(
+                    "🎉 **Application Status: APPROVED**\n\n"
+                    "After a full review by the Crystal Hub Administration Team, "
+                    "your Tester Application has been **successfully approved**.\n\n"
+                    "We believe you have the skill level and professionalism required "
+                    "to represent our competitive standards.\n\n"
+                    "⚜ Please maintain high integrity and fairness in all evaluations.\n\n"
+                    "Welcome to Crystal Hub."
+                )
+            except:
+                pass
 
-    await self.disable_all(interaction)
-    await interaction.response.send_message("Applicant accepted.", ephemeral=True)
+        await self.disable_all(interaction)
+        await interaction.response.send_message("Applicant accepted.", ephemeral=True)
 
     @discord.ui.button(label="Reject", style=discord.ButtonStyle.red, custom_id="app_reject_unique")
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -432,10 +432,10 @@ class ApplicationReviewView(discord.ui.View):
             return
 
         self.handled = True
-        await self.disable_all(interaction)
-        await interaction.response.send_modal(RejectReasonModal(self.applicant_id))
         active_applications.pop(self.applicant_id, None)
 
+        await self.disable_all(interaction)
+        await interaction.response.send_modal(RejectReasonModal(self.applicant_id))
 # ================= APPLICATION PANEL =================
 
 class ApplicationPanel(discord.ui.View):
