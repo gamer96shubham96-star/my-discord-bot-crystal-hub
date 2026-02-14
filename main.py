@@ -183,15 +183,23 @@ class MainPanel(discord.ui.View):
         ticket_owners[channel.id] = interaction.user.id
         last_activity[channel.id] = discord.utils.utcnow().timestamp()
 
-        embed = discord.Embed(
-            title="🎫 Crystal Hub • Tier Test Ticket",
-            description=f"Welcome {interaction.user.mention}\n\nFill the form below.",
-            color=discord.Color.blurple()
+             embed = discord.Embed(
+             title="🎫 Crystal Hub • Tier Evaluation Ticket",
+             description=(
+             f"Welcome {interaction.user.mention},\n\n"
+             "Your private evaluation channel has been created.\n"
+             "Please complete the tier form below to begin the assessment process."
+            ),
+             color=discord.Color.from_rgb(40, 120, 255),
+             timestamp=discord.utils.utcnow()
         )
 
-        embed.add_field(name="📌 Status", value="🟢 Open", inline=True)
-        embed.add_field(name="👤 Claimed By", value="Nobody", inline=True)
-        embed.set_image(url="https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif")
+             embed.add_field(name="📌 Ticket Status", value="🟢 Open", inline=True)
+             embed.add_field(name="👤 Assigned Staff", value="Not Assigned", inline=True)
+
+             embed.set_footer(text="Crystal Hub • Competitive Evaluation System")
+             embed.set_thumbnail(url=interaction.guild.icon.url if interaction.guild.icon else None)
+             embed.set_image(url="https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif")
 
         await channel.send(embed=embed, view=TierFormView(channel.id))
         await channel.send(view=TicketButtons())
@@ -207,18 +215,15 @@ class TierFormView(discord.ui.View):
         self.channel_id = channel_id
 
     @discord.ui.button(
-        label="📝 Tier Test Form",
+        label="📝Tier Form ➠",
         style=discord.ButtonStyle.success,
         custom_id="tier_form_open"
     )
     async def open_form(self, interaction: discord.Interaction, button: discord.ui.Button):
 
         if tier_filled.get(self.channel_id):
-            await interaction.response.send_message("✅ Form already submitted.", ephemeral=True)
+            await interaction.response.send_message("Form already submitted.", ephemeral=True)
             return
-
-        button.disabled = True
-        await interaction.message.edit(view=self)
 
         await interaction.response.send_modal(TierModal(self))
 
@@ -240,6 +245,9 @@ class TierModal(discord.ui.Modal, title="Tier Test Form"):
 
     async def on_submit(self, interaction: discord.Interaction):
         tier_filled[self.parent_view.channel_id] = True
+
+         # Remove button AFTER submit
+         await interaction.message.edit(view=None)
 
         for child in self.parent_view.children:
             child.disabled = True
@@ -399,7 +407,13 @@ class ApplicationReviewView(discord.ui.View):
         self.handled = True
         active_applications.pop(self.applicant_id, None)
 
-        user = interaction.guild.get_member(self.applicant_id)
+user = interaction.guild.get_member(self.applicant_id)
+if not user:
+    try:
+        user = await client.fetch_user(self.applicant_id)
+    except:
+        user = None
+
         tester_role = discord.utils.get(interaction.guild.roles, name="Tester")
 
         if tester_role and user:
@@ -459,30 +473,38 @@ class TicketButtons(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="📌 Claim Ticket", style=discord.ButtonStyle.primary, custom_id="claim_ticket")
+    @discord.ui.button(label="📌 Claim", style=discord.ButtonStyle.primary, custom_id="claim_ticket")
     async def claim(self, interaction: discord.Interaction, button: discord.ui.Button):
 
-        staff_role = interaction.guild.get_role(ticket_config["staff_role"])
+    staff_role = interaction.guild.get_role(ticket_config["staff_role"])
 
-        if staff_role not in interaction.user.roles:
-            await interaction.response.send_message("Staff only.", ephemeral=True)
-            return
+    if staff_role not in interaction.user.roles:
+        await interaction.response.send_message("Staff only.", ephemeral=True)
+        return
 
-        if interaction.channel.id in claimed_by:
-            await interaction.response.send_message(
-                f"Already claimed by <@{claimed_by[interaction.channel.id]}>",
-                ephemeral=True
-            )
-            return
+    if interaction.channel.id in claimed_by:
+        await interaction.response.send_message(
+            f"Already claimed by <@{claimed_by[interaction.channel.id]}>",
+            ephemeral=True
+        )
+        return
 
-        claimed_by[interaction.channel.id] = interaction.user.id
+    claimed_by[interaction.channel.id] = interaction.user.id
 
-        await interaction.channel.edit(name=f"claimed-{interaction.user.name}")
+    # Update embed professionally
+    message = interaction.channel.history(limit=5)
+    async for msg in message:
+        if msg.embeds:
+            embed = msg.embeds[0]
+            embed.set_field_at(0, name="📌 Ticket Status", value="🟡 Claimed", inline=True)
+            embed.set_field_at(1, name="👤 Assigned Staff", value=interaction.user.mention, inline=True)
+            await msg.edit(embed=embed)
+            break
 
-        button.disabled = True
-        await interaction.message.edit(view=self)
+    button.disabled = True
+    await interaction.message.edit(view=self)
 
-        await interaction.response.send_message("✅ Ticket claimed.", ephemeral=True)
+    await interaction.response.send_message("✅ Ticket successfully claimed.", ephemeral=True)
 
     @discord.ui.button(label="🔒 Close Ticket", style=discord.ButtonStyle.danger, custom_id="close_ticket")
     async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
