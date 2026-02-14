@@ -71,6 +71,9 @@ def find_existing_ticket(guild: discord.Guild, user_id: int) -> discord.TextChan
                 return channel
     return None
 
+def count_user_tickets(user_id: int):
+    return sum(1 for owner in ticket_owners.values() if owner == user_id)
+
 async def auto_close_task():
     while True:
         await asyncio.sleep(60)
@@ -122,84 +125,82 @@ class MainPanel(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-@discord.ui.button(
-    label="🎫Tier Test",
-    style=discord.ButtonStyle.blurple,
-    custom_id="crystalhub_tier_start"
-)
-async def start_tier(self, interaction: discord.Interaction, button: discord.ui.Button):
-
-    if "category" not in ticket_config:
-        await interaction.response.send_message(
-            "❌ Ticket system is not configured yet.\nRun /setup_tickets",
-            ephemeral=True
-        )
-        return
-
-    category = interaction.guild.get_channel(ticket_config["category"])
-    staff_role = interaction.guild.get_role(ticket_config["staff_role"])
-
-    existing = find_existing_ticket(interaction.guild, interaction.user.id)
-    if existing:
-        await interaction.response.send_message(
-            f"❌ You already have a ticket: {existing.mention}",
-            ephemeral=True
-        )
-        return
-
-    # Max ticket limit
-    if count_user_tickets(interaction.user.id) >= MAX_TICKETS:
-        await interaction.response.send_message(
-            "❌ You reached maximum open tickets.",
-            ephemeral=True
-        )
-        return
-
-    # Anti spam cooldown
-    now = discord.utils.utcnow().timestamp()
-    last = user_ticket_cooldown.get(interaction.user.id)
-
-    if last and now - last < TICKET_COOLDOWN:
-        await interaction.response.send_message(
-            "⏳ Please wait before opening another ticket.",
-            ephemeral=True
-        )
-        return
-
-    user_ticket_cooldown[interaction.user.id] = now
-
-    overwrites = {
-        interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
-        interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True),
-        staff_role: discord.PermissionOverwrite(view_channel=True, send_messages=True),
-    }
-
-    channel = await category.create_text_channel(
-        name=f"tier-{interaction.user.name}".lower().replace(" ", "-"),
-        overwrites=overwrites
+    @discord.ui.button(
+        label="🎫Tier Test",
+        style=discord.ButtonStyle.blurple,
+        custom_id="crystalhub_tier_start"
     )
+    async def start_tier(self, interaction: discord.Interaction, button: discord.ui.Button):
 
-    ticket_owners[channel.id] = interaction.user.id
-    last_activity[channel.id] = discord.utils.utcnow().timestamp()
+        if "category" not in ticket_config:
+            await interaction.response.send_message(
+                "❌ Ticket system is not configured yet.\nRun /setup_tickets",
+                ephemeral=True
+            )
+            return
 
-    embed = discord.Embed(
-        title="🎫 Crystal Hub • Tier Test Ticket",
-        description=f"Welcome {interaction.user.mention}\n\nFill the form below.",
-        color=discord.Color.blurple()
-    )
+        category = interaction.guild.get_channel(ticket_config["category"])
+        staff_role = interaction.guild.get_role(ticket_config["staff_role"])
 
-    embed.add_field(name="📌 Status", value="🟢 Open", inline=True)
-    embed.add_field(name="👤 Claimed By", value="Nobody", inline=True)
+        existing = find_existing_ticket(interaction.guild, interaction.user.id)
+        if existing:
+            await interaction.response.send_message(
+                f"❌ You already have a ticket: {existing.mention}",
+                ephemeral=True
+            )
+            return
 
-    embed.set_image(url="https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif")
+        if count_user_tickets(interaction.user.id) >= MAX_TICKETS:
+            await interaction.response.send_message(
+                "❌ You reached maximum open tickets.",
+                ephemeral=True
+            )
+            return
 
-    await channel.send(embed=embed, view=TierFormView(channel.id))
-    await channel.send(view=TicketButtons())
+        now = discord.utils.utcnow().timestamp()
+        last = user_ticket_cooldown.get(interaction.user.id)
 
-    await interaction.response.send_message(
-        f"✅ Ticket created: {channel.mention}",
-        ephemeral=True
-    )
+        if last and now - last < TICKET_COOLDOWN:
+            await interaction.response.send_message(
+                "⏳ Please wait before opening another ticket.",
+                ephemeral=True
+            )
+            return
+
+        user_ticket_cooldown[interaction.user.id] = now
+
+        overwrites = {
+            interaction.guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True),
+            staff_role: discord.PermissionOverwrite(view_channel=True, send_messages=True),
+        }
+
+        channel = await category.create_text_channel(
+            name=f"tier-{interaction.user.name}".lower().replace(" ", "-"),
+            overwrites=overwrites
+        )
+
+        ticket_owners[channel.id] = interaction.user.id
+        last_activity[channel.id] = discord.utils.utcnow().timestamp()
+
+        embed = discord.Embed(
+            title="🎫 Crystal Hub • Tier Test Ticket",
+            description=f"Welcome {interaction.user.mention}\n\nFill the form below.",
+            color=discord.Color.blurple()
+        )
+
+        embed.add_field(name="📌 Status", value="🟢 Open", inline=True)
+        embed.add_field(name="👤 Claimed By", value="Nobody", inline=True)
+        embed.set_image(url="https://media.giphy.com/media/IkSLbEzqgT9LzS1NKH/giphy.gif")
+
+        await channel.send(embed=embed, view=TierFormView(channel.id))
+        await channel.send(view=TicketButtons())
+
+        await interaction.response.send_message(
+            f"✅ Ticket created: {channel.mention}",
+            ephemeral=True
+        )
+#---------------------------------------------------------------
 class TierFormView(discord.ui.View):
     def __init__(self, channel_id: int):
         super().__init__(timeout=None)
@@ -357,8 +358,15 @@ class RejectReasonModal(discord.ui.Modal, title="Application Rejection Reason"):
 
         try:
             await user.send(
-                f"❌ Your Tester Application at **Crystal Hub** was rejected.\n\n"
-                f"**Reason:**\n{self.reason.value}"
+                    "❌ **Application Update**\n\n"
+                    "Thank you for taking the time to apply for the Crystal Hub Tester Team.\n\n"
+                    "After careful review, we regret to inform you that your application "
+                    "has not been approved at this time.\n\n"
+                    f"**Reason Provided by Staff:**\n{self.reason.value}\n\n"
+                    "This decision is not permanent. You are welcome to reapply after improving "
+                    "your experience and activity.\n\n"
+                    "We appreciate your interest in Crystal Hub."
+   
             )
         except:
             pass
@@ -384,35 +392,37 @@ class ApplicationReviewView(discord.ui.View):
     @discord.ui.button(label="Accept", style=discord.ButtonStyle.green, custom_id="app_accept_unique")
     async def accept(self, interaction: discord.Interaction, button: discord.ui.Button):
 
-        if self.handled:
-            await interaction.response.send_message("Already handled.", ephemeral=True)
-            return
+    if self.handled:
+        await interaction.response.send_message("Already handled.", ephemeral=True)
+        return
 
-        self.handled = True
+    self.handled = True
+    active_applications.pop(self.applicant_id, None)
 
-        active_applications.pop(self.applicant_id, None)
-        
-        user = interaction.guild.get_member(self.applicant_id)
+    user = interaction.guild.get_member(self.applicant_id)
+    tester_role = discord.utils.get(interaction.guild.roles, name="Tester")
 
-        tester_role = discord.utils.get(interaction.guild.roles, name="Tester")
-
-tester_role = discord.utils.get(interaction.guild.roles, name="Tester")
-
-if tester_role and user:
-    try:
-        await user.add_roles(tester_role)
-    except:
-        pass
-
+    if tester_role and user:
         try:
-            await user.send(
-                "🎉 Your Tester Application at **Crystal Hub** has been **ACCEPTED**."
-            )
+            await user.add_roles(tester_role)
         except:
             pass
 
-        await self.disable_all(interaction)
-        await interaction.response.send_message("Applicant accepted.", ephemeral=True)
+        try:
+            await user.send(
+    "🎉 **Application Status: APPROVED**\n\n"
+    "After a full review by the Crystal Hub Administration Team, "
+    "your Tester Application has been **successfully approved**.\n\n"
+    "We believe you have the skill level and professionalism required "
+    "to represent our competitive standards.\n\n"
+    "⚜ Please maintain high integrity and fairness in all evaluations.\n\n"
+    "Welcome to Crystal Hub."
+)
+        except:
+            pass
+
+    await self.disable_all(interaction)
+    await interaction.response.send_message("Applicant accepted.", ephemeral=True)
 
     @discord.ui.button(label="Reject", style=discord.ButtonStyle.red, custom_id="app_reject_unique")
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -452,45 +462,45 @@ class TicketButtons(discord.ui.View):
     @discord.ui.button(label="📌 Claim Ticket", style=discord.ButtonStyle.primary, custom_id="claim_ticket")
     async def claim(self, interaction: discord.Interaction, button: discord.ui.Button):
 
-    staff_role = interaction.guild.get_role(ticket_config["staff_role"])
+        staff_role = interaction.guild.get_role(ticket_config["staff_role"])
 
-    if staff_role not in interaction.user.roles:
-        await interaction.response.send_message("Staff only.", ephemeral=True)
-        return
+        if staff_role not in interaction.user.roles:
+            await interaction.response.send_message("Staff only.", ephemeral=True)
+            return
 
-    if interaction.channel.id in claimed_by:
-        await interaction.response.send_message(
-            f"Already claimed by <@{claimed_by[interaction.channel.id]}>",
-            ephemeral=True
-        )
-        return
+        if interaction.channel.id in claimed_by:
+            await interaction.response.send_message(
+                f"Already claimed by <@{claimed_by[interaction.channel.id]}>",
+                ephemeral=True
+            )
+            return
 
-    claimed_by[interaction.channel.id] = interaction.user.id
+        claimed_by[interaction.channel.id] = interaction.user.id
 
-    await interaction.channel.edit(name=f"claimed-{interaction.user.name}")
+        await interaction.channel.edit(name=f"claimed-{interaction.user.name}")
 
-    button.disabled = True
-    await interaction.message.edit(view=self)
+        button.disabled = True
+        await interaction.message.edit(view=self)
 
-    await interaction.response.send_message("✅ Ticket claimed.", ephemeral=True)
+        await interaction.response.send_message("✅ Ticket claimed.", ephemeral=True)
 
     @discord.ui.button(label="🔒 Close Ticket", style=discord.ButtonStyle.danger, custom_id="close_ticket")
     async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
 
-    staff_role = interaction.guild.get_role(ticket_config["staff_role"])
+        staff_role = interaction.guild.get_role(ticket_config["staff_role"])
 
-    if staff_role not in interaction.user.roles:
+        if staff_role not in interaction.user.roles:
+            await interaction.response.send_message(
+                "❌ Only staff can close tickets.",
+                ephemeral=True
+            )
+            return
+
         await interaction.response.send_message(
-            "❌ Only staff can close tickets.",
+            "Are you sure you want to close this ticket?",
+            view=ConfirmCloseView(),
             ephemeral=True
         )
-        return
-
-    await interaction.response.send_message(
-        "Are you sure you want to close this ticket?",
-        view=ConfirmCloseView(),
-        ephemeral=True
-    )
 
 class ConfirmCloseView(discord.ui.View):
     def __init__(self):
