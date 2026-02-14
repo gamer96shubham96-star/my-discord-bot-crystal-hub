@@ -112,5 +112,17 @@ class CreateTicketView(discord.ui.View):
             ephemeral=True
         )
 
+async def auto_close():
+    await asyncio.sleep(1800)  # 30 minutes
+
+    if channel:
+        try:
+            await channel.send("⏳ Ticket closed due to inactivity.")
+            await channel.delete()
+        except:
+            pass
+
+interaction.client.loop.create_task(auto_close())
+
 async def setup(bot):
     await bot.add_cog(Tickets(bot))
