@@ -409,7 +409,8 @@ class ApplicationReviewView(discord.ui.View):
             except:
                 user = None
 
-        tester_role = discord.utils.get(interaction.guild.roles, name="Tester")
+        TESTER_ROLE_ID = 1468343923461324953  # replace with your real role ID
+        tester_role = interaction.guild.get_role(TESTER_ROLE_ID)
 
         if tester_role and user:
             try:
