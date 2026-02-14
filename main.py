@@ -31,10 +31,20 @@ async def on_ready():
     print("Crystal Hub Enterprise Bot Ready")
 @bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error):
-    await interaction.response.send_message(
-        ⚠️ Something went wrong. Staff have been notified.",
-        ephemeral=True
-    )
-    print(f"Error: {error}")
 
+    try:
+        if interaction.response.is_done():
+            await interaction.followup.send(
+                "Something went wrong. Staff have been notified.",
+                ephemeral=True
+            )
+        else:
+            await interaction.response.send_message(
+                "Something went wrong. Staff have been notified.",
+                ephemeral=True
+            )
+    except:
+        pass
+
+    print(f"[ERROR] {error}")
 bot.run(TOKEN)
